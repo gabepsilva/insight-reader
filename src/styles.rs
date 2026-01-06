@@ -1,4 +1,4 @@
-/// Custom style functions for UI components (Iced 0.13+ closure-based API)
+//! Custom style functions for UI components (Iced 0.13+ closure-based API)
 
 use iced::widget::{button, container};
 use iced::{Color, Theme, Background, Border};

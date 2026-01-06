@@ -11,7 +11,7 @@ use crate::update;
 use crate::view;
 
 thread_local! {
-    static INITIAL_PROVIDER: RefCell<Option<Option<PiperTTSProvider>>> = RefCell::new(None);
+    static INITIAL_PROVIDER: RefCell<Option<Option<PiperTTSProvider>>> = const { RefCell::new(None) };
 }
 
 pub fn set_initial_provider(provider: Option<PiperTTSProvider>) {

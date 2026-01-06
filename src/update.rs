@@ -78,7 +78,7 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
             eprintln!("Opening settings window with ID: {:?}", window_id);
             app.settings_window_id = Some(window_id);
             app.show_settings_modal = true;
-            task.map(|id| Message::WindowOpened(id))
+            task.map(Message::WindowOpened)
         }
         Message::CloseSettings => {
             app.show_settings_modal = false;

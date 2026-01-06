@@ -1,4 +1,4 @@
-/// System interactions (clipboard, external commands, etc.)
+//! System interactions (clipboard, external commands, etc.)
 
 mod clipboard;
 

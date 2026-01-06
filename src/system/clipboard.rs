@@ -1,4 +1,4 @@
-/// Clipboard and selection reading utilities
+//! Clipboard and selection reading utilities
 
 use std::process::Command;
 
