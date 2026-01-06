@@ -1,6 +1,6 @@
 //! Custom style functions for UI components (Iced 0.13+ closure-based API)
 
-use iced::widget::{button, container};
+use iced::widget::{button, container, radio};
 use iced::{Background, Border, Color, Theme};
 
 pub fn window_style(_theme: &Theme) -> container::Style {
@@ -67,4 +67,13 @@ pub fn transparent_button_style(_theme: &Theme, _status: button::Status) -> butt
     }
 }
 
-
+/// White text radio style for dark backgrounds.
+pub fn white_radio_style(_theme: &Theme, _status: radio::Status) -> radio::Style {
+    radio::Style {
+        background: Background::Color(Color::TRANSPARENT),
+        dot_color: Color::from_rgb(0.4, 0.6, 1.0),
+        border_width: 1.0,
+        border_color: Color::from_rgba(1.0, 1.0, 1.0, 0.6),
+        text_color: Some(Color::WHITE),
+    }
+}

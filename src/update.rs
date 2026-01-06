@@ -67,7 +67,7 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
         Message::Settings => {
             eprintln!("Settings clicked");
             let (window_id, task) = window::open(window::Settings {
-                size: Size::new(760.0, 140.0),
+                size: Size::new(760.0, 220.0),
                 resizable: false,
                 decorations: true,
                 transparent: false,
@@ -87,6 +87,11 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
             } else {
                 Task::none()
             }
+        }
+        Message::ProviderSelected(backend) => {
+            app.selected_backend = backend;
+            // Actual provider switching logic will be implemented later.
+            Task::none()
         }
         Message::WindowOpened(id) => {
             eprintln!("Window opened: {:?}", id);

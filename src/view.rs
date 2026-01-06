@@ -1,12 +1,12 @@
 //! UI rendering logic
 
-use iced::widget::{button, column, container, progress_bar, row, svg, text, Space};
+use iced::widget::{button, column, container, progress_bar, radio, row, svg, text, Space};
 use iced::{Alignment, Color, Element, Length};
 
-use crate::model::{App, Message, PlaybackState};
+use crate::model::{App, Message, PlaybackState, TTSBackend};
 use crate::styles::{
     circle_button_style, modal_content_style, transparent_button_style, wave_bar_style,
-    window_style,
+    white_radio_style, window_style,
 };
 
 const MIN_HEIGHT: f32 = 4.0;
@@ -54,7 +54,7 @@ fn white_text(content: &str, size: u32) -> text::Text<'_> {
 }
 
 /// Settings window view - floating modal style
-pub fn settings_window_view<'a>() -> Element<'a, Message> {
+pub fn settings_window_view<'a>(app: &App) -> Element<'a, Message> {
     let close_button = button(
         container(white_text("✕", 20))
             .width(Length::Fixed(32.0))
@@ -64,6 +64,29 @@ pub fn settings_window_view<'a>() -> Element<'a, Message> {
     )
     .style(circle_button_style)
     .on_press(Message::CloseSettings);
+
+    let provider_selector = column![
+        white_text("TTS Provider", 18),
+        Space::new().height(Length::Fixed(12.0)),
+        row![
+            radio(
+                "Piper (local, offline)",
+                TTSBackend::Piper,
+                Some(app.selected_backend),
+                Message::ProviderSelected
+            )
+            .style(white_radio_style),
+            radio(
+                "AWS Polly (cloud)",
+                TTSBackend::AwsPolly,
+                Some(app.selected_backend),
+                Message::ProviderSelected
+            )
+            .style(white_radio_style),
+        ]
+        .spacing(16),
+    ]
+    .spacing(4);
 
     container(
         column![
@@ -75,16 +98,7 @@ pub fn settings_window_view<'a>() -> Element<'a, Message> {
             .width(Length::Fill)
             .align_y(Alignment::Center),
             Space::new().height(Length::Fixed(20.0)),
-            text("Settings content goes here")
-                .size(16)
-                .style(|_theme| iced::widget::text::Style {
-                    color: Some(Color::from_rgba(1.0, 1.0, 1.0, 0.8)),
-                }),
-            Space::new().height(Length::Fixed(30.0)),
-            button(white_text("Close Window", 16))
-                .style(circle_button_style)
-                .padding(16)
-                .on_press(Message::CloseSettings),
+            provider_selector,
         ]
         .padding(30)
         .align_x(Alignment::Center),

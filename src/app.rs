@@ -41,7 +41,7 @@ pub fn view(app: &App) -> Element<'_, Message> {
         && app.settings_window_id.is_some()
         && app.current_window_id == app.settings_window_id
     {
-        return view::settings_window_view();
+        return view::settings_window_view(app);
     }
     
     view::main_view(app)
