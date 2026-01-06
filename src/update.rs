@@ -4,6 +4,7 @@ use iced::window;
 use iced::{Task, Size};
 
 use crate::model::{App, Message, PlaybackState};
+use crate::config;
 use crate::providers::{PiperTTSProvider, TTSProvider};
 
 const SKIP_SECONDS: f32 = 5.0;
@@ -67,7 +68,7 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
         Message::Settings => {
             eprintln!("Settings clicked");
             let (window_id, task) = window::open(window::Settings {
-                size: Size::new(760.0, 220.0),
+                size: Size::new(760.0, 280.0),
                 resizable: false,
                 decorations: true,
                 transparent: false,
@@ -89,8 +90,17 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
             }
         }
         Message::ProviderSelected(backend) => {
+            eprintln!("UI: provider selected = {:?}", backend);
             app.selected_backend = backend;
-            // Actual provider switching logic will be implemented later.
+            // Persist the selected backend so future runs remember the choice.
+            config::save_voice_provider(backend);
+            Task::none()
+        }
+        Message::LogLevelSelected(level) => {
+            eprintln!("UI: log level selected = {:?}", level);
+            app.log_level = level;
+            // Persist the selected log level so future runs remember the choice.
+            config::save_log_level(level);
             Task::none()
         }
         Message::WindowOpened(id) => {

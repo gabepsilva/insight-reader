@@ -2,11 +2,21 @@
 
 use iced::window;
 use crate::providers::PiperTTSProvider;
+use crate::config;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TTSBackend {
     Piper,
     AwsPolly,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LogLevel {
+    Error,
+    Warn,
+    Info,
+    Debug,
+    Trace,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -26,6 +36,7 @@ pub enum Message {
     Settings,
     CloseSettings,
     ProviderSelected(TTSBackend),
+    LogLevelSelected(LogLevel),
     WindowOpened(window::Id),
     WindowClosed(window::Id),
 }
@@ -40,6 +51,7 @@ pub struct App {
     pub frequency_bands: Vec<f32>,
     pub provider: Option<PiperTTSProvider>,
     pub selected_backend: TTSBackend,
+    pub log_level: LogLevel,
     pub show_settings_modal: bool,
     pub settings_window_id: Option<window::Id>,
     pub current_window_id: Option<window::Id>,
@@ -55,6 +67,7 @@ impl Default for App {
             frequency_bands: vec![0.0; 10],
             provider: None,
             selected_backend: TTSBackend::Piper,
+            log_level: LogLevel::Info,
             show_settings_modal: false,
             settings_window_id: None,
             current_window_id: None,
@@ -67,12 +80,15 @@ impl Default for App {
 impl App {
     /// Create a new app with pending text to speak.
     pub fn new(pending_text: Option<String>) -> Self {
+        let selected_backend = config::load_voice_provider();
+        let log_level = config::load_log_level();
         Self {
             playback_state: PlaybackState::Stopped,
             progress: 0.0,
             frequency_bands: vec![0.0; 10],
             provider: None,
-            selected_backend: TTSBackend::Piper,
+            selected_backend,
+            log_level,
             show_settings_modal: false,
             settings_window_id: None,
             current_window_id: None,

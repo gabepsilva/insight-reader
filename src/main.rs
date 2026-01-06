@@ -1,6 +1,7 @@
 //! Entry point and window configuration
 
 mod app;
+mod config;
 mod model;
 mod providers;
 mod styles;

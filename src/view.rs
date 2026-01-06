@@ -3,7 +3,7 @@
 use iced::widget::{button, column, container, progress_bar, radio, row, svg, text, Space};
 use iced::{Alignment, Color, Element, Length};
 
-use crate::model::{App, Message, PlaybackState, TTSBackend};
+use crate::model::{App, LogLevel, Message, PlaybackState, TTSBackend};
 use crate::styles::{
     circle_button_style, modal_content_style, transparent_button_style, wave_bar_style,
     white_radio_style, window_style,
@@ -88,6 +88,50 @@ pub fn settings_window_view<'a>(app: &App) -> Element<'a, Message> {
     ]
     .spacing(4);
 
+    let log_level_selector = column![
+        white_text("Log level", 18),
+        Space::new().height(Length::Fixed(12.0)),
+        row![
+            radio(
+                "Error",
+                LogLevel::Error,
+                Some(app.log_level),
+                Message::LogLevelSelected
+            )
+            .style(white_radio_style),
+            radio(
+                "Warn",
+                LogLevel::Warn,
+                Some(app.log_level),
+                Message::LogLevelSelected
+            )
+            .style(white_radio_style),
+            radio(
+                "Info",
+                LogLevel::Info,
+                Some(app.log_level),
+                Message::LogLevelSelected
+            )
+            .style(white_radio_style),
+            radio(
+                "Debug",
+                LogLevel::Debug,
+                Some(app.log_level),
+                Message::LogLevelSelected
+            )
+            .style(white_radio_style),
+            radio(
+                "Trace",
+                LogLevel::Trace,
+                Some(app.log_level),
+                Message::LogLevelSelected
+            )
+            .style(white_radio_style),
+        ]
+        .spacing(16),
+    ]
+    .spacing(4);
+
     container(
         column![
             row![
@@ -99,6 +143,8 @@ pub fn settings_window_view<'a>(app: &App) -> Element<'a, Message> {
             .align_y(Alignment::Center),
             Space::new().height(Length::Fixed(20.0)),
             provider_selector,
+            Space::new().height(Length::Fixed(16.0)),
+            log_level_selector,
         ]
         .padding(30)
         .align_x(Alignment::Center),
