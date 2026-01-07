@@ -13,6 +13,13 @@ const MIN_HEIGHT: f32 = 4.0;
 const MAX_HEIGHT: f32 = 24.0;
 const NUM_BARS: usize = 10;
 
+// Bundled SVG icons (embedded at compile time)
+const SVG_PLAY: &[u8] = include_bytes!("../assets/icons/play.svg");
+const SVG_PAUSE: &[u8] = include_bytes!("../assets/icons/pause.svg");
+const SVG_STOP: &[u8] = include_bytes!("../assets/icons/stop.svg");
+const SVG_VOLUME: &[u8] = include_bytes!("../assets/icons/volume.svg");
+const SVG_SETTINGS: &[u8] = include_bytes!("../assets/icons/settings.svg");
+
 /// Calculate bar height from frequency band amplitude (0.0-1.0).
 fn bar_height(amplitude: f32) -> f32 {
     MIN_HEIGHT + amplitude * (MAX_HEIGHT - MIN_HEIGHT)
@@ -37,11 +44,32 @@ fn circle_button<'a>(
     .into()
 }
 
-/// Helper to create an SVG icon element.
-fn icon(path: &str, size: f32) -> svg::Svg<'_> {
-    svg(svg::Handle::from_path(path))
+/// Helper to create an SVG icon element from bundled bytes.
+fn icon_from_bytes(bytes: &'static [u8], size: f32) -> svg::Svg<'static> {
+    svg(svg::Handle::from_memory(bytes))
         .width(Length::Fixed(size))
         .height(Length::Fixed(size))
+}
+
+/// Icon helper functions for each bundled SVG.
+fn play_icon(size: f32) -> svg::Svg<'static> {
+    icon_from_bytes(SVG_PLAY, size)
+}
+
+fn pause_icon(size: f32) -> svg::Svg<'static> {
+    icon_from_bytes(SVG_PAUSE, size)
+}
+
+fn stop_icon(size: f32) -> svg::Svg<'static> {
+    icon_from_bytes(SVG_STOP, size)
+}
+
+fn volume_icon(size: f32) -> svg::Svg<'static> {
+    icon_from_bytes(SVG_VOLUME, size)
+}
+
+fn settings_icon(size: f32) -> svg::Svg<'static> {
+    icon_from_bytes(SVG_SETTINGS, size)
 }
 
 /// Helper to create white text with consistent styling.
@@ -222,25 +250,25 @@ pub fn main_view(app: &App) -> Element<'_, Message> {
     .into();
 
     // 2. Play/pause icon
-    let play_pause_icon = if app.playback_state == PlaybackState::Playing {
-        "assets/icons/pause.svg"
+    let play_pause_icon: Element<Message> = if app.playback_state == PlaybackState::Playing {
+        pause_icon(16.0).into()
     } else {
-        "assets/icons/play.svg"
+        play_icon(16.0).into()
     };
 
     // 3. Control buttons row
     let controls = row![
         circle_button(white_text("-5s", 12), Message::SkipBackward),
         circle_button(white_text("+5s", 12), Message::SkipForward),
-        circle_button(icon(play_pause_icon, 16.0), Message::PlayPause),
-        circle_button(icon("assets/icons/stop.svg", 16.0), Message::Stop),
+        circle_button(play_pause_icon, Message::PlayPause),
+        circle_button(stop_icon(16.0), Message::Stop),
     ]
     .spacing(6)
     .align_y(Alignment::Center);
 
     // 4. Base content row (without gear): [volume] [waveform] [controls]
     let content_row = row![
-        icon("assets/icons/volume.svg", 28.0),
+        volume_icon(28.0),
         Space::new().width(Length::Fixed(12.0)),
         waveform,
         Space::new().width(Length::Fixed(12.0)),
@@ -263,7 +291,7 @@ pub fn main_view(app: &App) -> Element<'_, Message> {
     .width(Length::Shrink);
 
     // 6. Settings gear (transparent button) on the right
-    let settings_btn = button(icon("assets/icons/settings.svg", 18.0))
+    let settings_btn = button(settings_icon(18.0))
         .style(transparent_button_style)
         .padding([0.0, 0.0])
         .on_press(Message::Settings);

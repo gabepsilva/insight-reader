@@ -61,7 +61,7 @@ GRARS_BIN="$BIN_DIR/grars"
 # GitHub repository
 GITHUB_REPO="${GITHUB_REPO:-gabepsilva/grars}"
 GITHUB_API="https://api.github.com/repos/$GITHUB_REPO"
-VERSION="${VERSION:-1.0.0}"
+GRARS_VERSION="${GRARS_VERSION:-1.0.0}"
 
 log_info "Installing to: $INSTALL_DIR"
 log_info "Binary will be installed to: $BIN_DIR"
@@ -72,8 +72,6 @@ MODEL_NAME="en_US-lessac-medium"
 
 # Detect Linux distribution
 detect_distro() {
-    # Save VERSION before sourcing os-release (which may overwrite it)
-    local saved_version="${VERSION:-}"
     if [ -f /etc/os-release ]; then
         # Source os-release, temporarily disable unbound variable check
         set +u
@@ -81,10 +79,6 @@ detect_distro() {
         DISTRO_ID="${ID:-unknown}"
         DISTRO_ID_LIKE="${ID_LIKE:-}"
         set -u
-        # Restore VERSION if it was overwritten
-        if [ -n "$saved_version" ]; then
-            VERSION="$saved_version"
-        fi
     elif [ -f /etc/arch-release ]; then
         DISTRO_ID="arch"
     elif [ -f /etc/debian_version ]; then
@@ -550,12 +544,11 @@ download_and_install_binary() {
     detect_arch
     
     # Construct binary name: grars-1.0.0-linux-x86_64
-    BINARY_NAME="grars-${VERSION}-${OS}-${ARCH}"
+    BINARY_NAME="grars-${GRARS_VERSION}-${OS}-${ARCH}"
     
     # Use specific release tag for v1.0.0, or allow override via RELEASE_TAG env var
     RELEASE_TAG="${RELEASE_TAG:-v1.0.0}"
     DOWNLOAD_URL="https://github.com/$GITHUB_REPO/releases/download/$RELEASE_TAG/$BINARY_NAME"
-    https://github.com/gabepsilva/grars/releases/download/v1.0.0/grars-1.0.0-linux-x86_64
     
     log_info "Download URL: $DOWNLOAD_URL"
     

@@ -51,13 +51,13 @@ While it should work on other Linux distributions and window managers, these are
 Run the installation script directly from GitHub:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/gabepsilva/grars/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/gabepsilva/grars/refs/heads/master/install.sh | bash
 ```
 
 Or using `wget`:
 
 ```bash
-wget -qO- https://raw.githubusercontent.com/gabepsilva/grars/main/install.sh | bash
+wget -qO- https://raw.githubusercontent.com/gabepsilva/grars/refs/heads/master/install.sh | bash
 ```
 
 ### Manual Installation
