@@ -3,7 +3,7 @@
 # Supports multiple Linux distributions: Arch, Debian/Ubuntu, Fedora, openSUSE, Alpine, Void, etc.
 #
 # Install directly via URL:
-#   curl -fsSL https://raw.githubusercontent.com/USER/grars/main/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/gabepsilva/grars/main/install.sh | bash
 #
 # This script will:
 #   1. Detect your Linux distribution
@@ -14,9 +14,9 @@
 #
 # Usage:
 #   # Direct installation via URL (recommended)
-#   curl -fsSL https://raw.githubusercontent.com/USER/grars/main/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/gabepsilva/grars/main/install.sh | bash
 #   # or
-#   wget -qO- https://raw.githubusercontent.com/USER/grars/main/install.sh | bash
+#   wget -qO- https://raw.githubusercontent.com/gabepsilva/grars/main/install.sh | bash
 #
 #   # Or download and run locally
 #   ./install.sh
@@ -72,6 +72,8 @@ MODEL_NAME="en_US-lessac-medium"
 
 # Detect Linux distribution
 detect_distro() {
+    # Save VERSION before sourcing os-release (which may overwrite it)
+    local saved_version="${VERSION:-}"
     if [ -f /etc/os-release ]; then
         # Source os-release, temporarily disable unbound variable check
         set +u
@@ -79,6 +81,10 @@ detect_distro() {
         DISTRO_ID="${ID:-unknown}"
         DISTRO_ID_LIKE="${ID_LIKE:-}"
         set -u
+        # Restore VERSION if it was overwritten
+        if [ -n "$saved_version" ]; then
+            VERSION="$saved_version"
+        fi
     elif [ -f /etc/arch-release ]; then
         DISTRO_ID="arch"
     elif [ -f /etc/debian_version ]; then
@@ -549,6 +555,7 @@ download_and_install_binary() {
     # Use specific release tag for v1.0.0, or allow override via RELEASE_TAG env var
     RELEASE_TAG="${RELEASE_TAG:-v1.0.0}"
     DOWNLOAD_URL="https://github.com/$GITHUB_REPO/releases/download/$RELEASE_TAG/$BINARY_NAME"
+    https://github.com/gabepsilva/grars/releases/download/v1.0.0/grars-1.0.0-linux-x86_64
     
     log_info "Download URL: $DOWNLOAD_URL"
     
