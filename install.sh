@@ -637,9 +637,36 @@ install_desktop() {
     mkdir -p "$DESKTOP_DIR"
     mkdir -p "$ICON_DIR"
     
-    # Install desktop file if available
+    # GitHub URLs for desktop file and icon
+    DESKTOP_URL="https://raw.githubusercontent.com/$GITHUB_REPO/master/grars.desktop"
+    ICON_URL="https://raw.githubusercontent.com/$GITHUB_REPO/master/assets/logo.svg"
+    
+    # Temporary files for downloading
+    TEMP_DESKTOP=""
+    TEMP_ICON=""
+    
+    # Try to find desktop file locally first
+    local desktop_source=""
     if [ -f "$SCRIPT_DIR/grars.desktop" ]; then
-        sed "s#\\\$HOME#$HOME#g" "$SCRIPT_DIR/grars.desktop" > "$DESKTOP_FILE"
+        desktop_source="$SCRIPT_DIR/grars.desktop"
+        log_info "Found desktop file locally at $desktop_source"
+    else
+        # Download from GitHub
+        log_info "Desktop file not found locally. Downloading from GitHub..."
+        TEMP_DESKTOP=$(mktemp)
+        if download_file "$DESKTOP_URL" "$TEMP_DESKTOP"; then
+            desktop_source="$TEMP_DESKTOP"
+            log_success "Desktop file downloaded from GitHub"
+        else
+            log_warn "Failed to download desktop file from GitHub (skipping)"
+            desktop_source=""
+        fi
+    fi
+    
+    # Install desktop file if we have a source
+    if [ -n "$desktop_source" ] && [ -f "$desktop_source" ]; then
+        # Process desktop file: replace $HOME with actual home directory
+        sed "s#\\\$HOME#$HOME#g" "$desktop_source" > "$DESKTOP_FILE"
         chmod 644 "$DESKTOP_FILE"
         log_success "Desktop file installed to $DESKTOP_FILE"
         
@@ -657,13 +684,32 @@ install_desktop() {
             update-desktop-database "$DESKTOP_DIR" 2>/dev/null || true
             log_info "Desktop database updated"
         fi
-    else
-        log_warn "Desktop file not found at $SCRIPT_DIR/grars.desktop (skipping)"
     fi
     
-    # Install icon if available
+    # Clean up temporary desktop file
+    [ -n "$TEMP_DESKTOP" ] && rm -f "$TEMP_DESKTOP" 2>/dev/null || true
+    
+    # Try to find icon locally first
+    local icon_source=""
     if [ -f "$SCRIPT_DIR/assets/logo.svg" ]; then
-        cp "$SCRIPT_DIR/assets/logo.svg" "$ICON_FILE"
+        icon_source="$SCRIPT_DIR/assets/logo.svg"
+        log_info "Found icon locally at $icon_source"
+    else
+        # Download from GitHub
+        log_info "Icon not found locally. Downloading from GitHub..."
+        TEMP_ICON=$(mktemp)
+        if download_file "$ICON_URL" "$TEMP_ICON"; then
+            icon_source="$TEMP_ICON"
+            log_success "Icon downloaded from GitHub"
+        else
+            log_warn "Failed to download icon from GitHub (skipping)"
+            icon_source=""
+        fi
+    fi
+    
+    # Install icon if we have a source
+    if [ -n "$icon_source" ] && [ -f "$icon_source" ]; then
+        cp "$icon_source" "$ICON_FILE"
         log_success "Icon installed to $ICON_FILE"
         
         # Update icon cache (try multiple methods for different DEs)
@@ -678,9 +724,10 @@ install_desktop() {
         elif command -v kbuildsycoca5 >/dev/null 2>&1; then
             kbuildsycoca5 --noincremental >/dev/null 2>&1 || true
         fi
-    else
-        log_warn "Icon not found at $SCRIPT_DIR/assets/logo.svg (skipping)"
     fi
+    
+    # Clean up temporary icon file
+    [ -n "$TEMP_ICON" ] && rm -f "$TEMP_ICON" 2>/dev/null || true
 }
 
 # Main installation function
