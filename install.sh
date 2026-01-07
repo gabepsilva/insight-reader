@@ -547,7 +547,7 @@ download_and_install_binary() {
     BINARY_NAME="grars-${VERSION}-${OS}-${ARCH}"
     
     # Use specific release tag for v1.0.0, or allow override via RELEASE_TAG env var
-    RELEASE_TAG="${RELEASE_TAG:-untagged-990b5f64375a7204b469}"
+    RELEASE_TAG="${RELEASE_TAG:-v1.0.0}"
     DOWNLOAD_URL="https://github.com/$GITHUB_REPO/releases/download/$RELEASE_TAG/$BINARY_NAME"
     
     log_info "Download URL: $DOWNLOAD_URL"
