@@ -279,6 +279,11 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
             if app.current_window_id == Some(id) {
                 app.current_window_id = None;
             }
+            // Exit when the main window is closed
+            if app.main_window_id == Some(id) {
+                info!("Main window closed, exiting");
+                return iced::exit();
+            }
             Task::none()
         }
         Message::InitIfReady => {

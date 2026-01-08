@@ -1,7 +1,7 @@
 //! Iced application adapter (thin UI layer)
 
 use iced::time::{self, Duration};
-use iced::{Element, Subscription, Task};
+use iced::{Element, Size, Subscription, Task};
 use iced::window;
 use std::cell::RefCell;
 use tracing::info;
@@ -29,6 +29,17 @@ pub fn new() -> (App, Task<Message>) {
         info!("App created with no pending text");
     }
     
+    // Open the main window (daemon doesn't open one by default)
+    let (_main_window_id, open_task) = window::open(window::Settings {
+        size: Size::new(360.0, 70.0),
+        resizable: false,
+        decorations: false,
+        transparent: true,
+        visible: true,
+        ..Default::default()
+    });
+    let open_task = open_task.map(Message::WindowOpened);
+    
     // Send a delayed message to initialize TTS if WindowOpened event didn't fire
     // This is a fallback for cases where the initial window doesn't trigger the event
     let init_task = if app.pending_text.is_some() {
@@ -42,12 +53,12 @@ pub fn new() -> (App, Task<Message>) {
         Task::none()
     };
     
-    (app, init_task)
+    (app, Task::batch([open_task, init_task]))
 }
 
-pub fn title(app: &App) -> String {
+pub fn title(app: &App, window: window::Id) -> String {
     // Set different titles for different windows
-    if app.show_settings_modal && app.settings_window_id.is_some() {
+    if app.settings_window_id == Some(window) {
         String::from("Settings")
     } else {
         String::from("Speaking...")
@@ -58,12 +69,9 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
     update::update(app, message)
 }
 
-pub fn view(app: &App) -> Element<'_, Message> {
-    // Show settings window if it's open and current window matches
-    if app.show_settings_modal
-        && app.settings_window_id.is_some()
-        && app.current_window_id == app.settings_window_id
-    {
+pub fn view(app: &App, window: window::Id) -> Element<'_, Message> {
+    // Show settings window if this is the settings window
+    if app.settings_window_id == Some(window) {
         return view::settings_window_view(app);
     }
     

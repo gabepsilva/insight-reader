@@ -10,7 +10,7 @@ mod system;
 mod update;
 mod view;
 
-use iced::{application, Size};
+use iced::daemon;
 use tracing::info;
 
 fn main() -> iced::Result {
@@ -41,17 +41,9 @@ fn main() -> iced::Result {
     // Store selected text for later initialization after window appears
     crate::app::set_initial_text(selected_text);
 
-    // Start the application immediately - window will appear right away
-    application(crate::app::new, crate::app::update, crate::app::view)
+    // Use daemon for multi-window support (view receives window::Id)
+    daemon(crate::app::new, crate::app::update, crate::app::view)
         .title(crate::app::title)
         .subscription(crate::app::subscription)
-        .window(iced::window::Settings {
-            size: Size::new(360.0, 70.0),
-            resizable: false,
-            decorations: false,
-            transparent: true,
-            visible: true,
-            ..Default::default()
-        })
         .run()
 }

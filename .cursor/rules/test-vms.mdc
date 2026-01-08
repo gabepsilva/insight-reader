@@ -3,8 +3,8 @@ alwaysApply: false
 ---
 
 # TEST VMS
-no password required for ssh
-su - root should work, and you can use as need password is 123
+- no password required for ssh
+- su - root should work, and you can use as need password is 123
 
 
 ## Ubuntu Desktop Minimal
@@ -18,5 +18,18 @@ ssh vboxuser@localhost -p 2224
 
 ## PopOs Cosmic
 ssh vboxuser@localhost -p 2225
+
+## Copy Debug Binary to VM
+
+When user says "copy to vm X" or similar, copy the debug binary to the specified VM:
+
+**Source:** `target/debug/grars` (build with `cargo build` if needed)
+
+**Destination:** `~/.local/bin/grars` on all VMs
+
+**Process:**
+1. Build debug binary: `cargo build` (if not already built)
+2. SCP to VM: `scp -P <PORT> target/debug/grars vboxuser@localhost:/tmp/grars`
+3. SSH and replace: `ssh -p <PORT> vboxuser@localhost "cp /tmp/grars ~/.local/bin/grars && chmod +x ~/.local/bin/grars"`
 
 
