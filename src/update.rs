@@ -206,11 +206,33 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
             app.playback_state = PlaybackState::Stopped;
             app.progress = 0.0;
             app.frequency_bands = vec![0.0; NUM_BANDS];
+            app.is_loading = false;
+            app.loading_animation_time = 0.0;
             info!("Playback stopped, closing main window");
             window::latest().and_then(window::close)
         }
         Message::Tick => {
-            if let Some(ref provider) = app.provider {
+            // Handle loading animation
+            if app.is_loading {
+                app.loading_animation_time += 0.15; // Increment animation time (faster animation)
+                if app.loading_animation_time > std::f32::consts::PI * 2.0 {
+                    app.loading_animation_time -= std::f32::consts::PI * 2.0;
+                }
+                
+                // Generate animated bar values using sine waves
+                // Creates a smooth wave that travels across the bars
+                app.frequency_bands = (0..NUM_BANDS)
+                    .map(|i| {
+                        // Create a traveling wave effect
+                        let position = i as f32 / NUM_BANDS as f32;
+                        let wave = (app.loading_animation_time * 2.0 + position * std::f32::consts::PI * 2.0).sin();
+                        // Add some variation with a secondary wave
+                        let secondary = (app.loading_animation_time * 1.5 + position * std::f32::consts::PI * 3.0).sin() * 0.3;
+                        // Normalize to 0.0-1.0 range with some minimum height
+                        ((wave + secondary) * 0.4 + 0.5).clamp(0.2, 1.0)
+                    })
+                    .collect();
+            } else if let Some(ref provider) = app.provider {
                 app.progress = provider.get_progress();
                 app.frequency_bands = provider.get_frequency_bands(NUM_BANDS);
 
@@ -291,6 +313,8 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                 // If we already have pending text (from async fetch), initialize TTS now
                 if let Some(text) = app.pending_text.take() {
                     info!("Window opened with pending text, initializing TTS");
+                    app.is_loading = true;
+                    app.loading_animation_time = 0.0;
                     return initialize_tts_async(app.selected_backend, text, "WindowOpened");
                 }
             } else {
@@ -323,10 +347,12 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                 info!("No text selected - app will wait for text or close");
             }
             
-            // Initialize TTS if window is already open, otherwise store for later
+                // Initialize TTS if window is already open, otherwise store for later
             if app.main_window_id.is_some() {
                 if let Some(text) = text {
                     info!("Window ready, initializing TTS with fetched text");
+                    app.is_loading = true;
+                    app.loading_animation_time = 0.0;
                     return initialize_tts_async(app.selected_backend, text, "SelectedTextFetched");
                 } else {
                     warn!("No text selected - closing window");
@@ -340,6 +366,10 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
             Task::none()
         }
         Message::TTSInitialized(result) => {
+            // Clear loading state regardless of result
+            app.is_loading = false;
+            app.loading_animation_time = 0.0;
+            
             match result {
                 Ok(()) => {
                     // Retrieve provider from static storage

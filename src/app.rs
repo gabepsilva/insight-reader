@@ -34,8 +34,8 @@ pub fn new() -> (App, Task<Message>) {
             use tracing::debug;
             debug!("Starting async text fetch task");
             // Small delay to ensure window is fully visible before fetching
-            tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-            debug!("Delay complete, fetching selected text");
+            //tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+            //debug!("Delay complete, fetching selected text");
             // Use spawn_blocking for the blocking shell command
             let result = tokio::task::spawn_blocking(|| {
                 debug!("Executing get_selected_text in blocking thread");
@@ -87,9 +87,9 @@ pub fn subscription(app: &App) -> Subscription<Message> {
     });
     
     // Run animation/polling at ~75ms intervals
-    // Only poll when playing (not stopped)
-    let tick = match app.playback_state {
-        PlaybackState::Stopped => Subscription::none(),
+    // Poll when playing, paused, or loading
+    let tick = match (app.playback_state, app.is_loading) {
+        (PlaybackState::Stopped, false) => Subscription::none(),
         _ => time::every(Duration::from_millis(75)).map(|_| Message::Tick),
     };
     

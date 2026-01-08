@@ -60,6 +60,8 @@ pub struct App {
     pub main_window_id: Option<window::Id>,
     pub pending_text: Option<String>,
     pub error_message: Option<String>,
+    pub is_loading: bool,
+    pub loading_animation_time: f32,
 }
 
 impl Default for App {
@@ -77,6 +79,8 @@ impl Default for App {
             main_window_id: None,
             pending_text: None,
             error_message: None,
+            is_loading: false,
+            loading_animation_time: 0.0,
         }
     }
 }
@@ -99,6 +103,8 @@ impl App {
             main_window_id: None,
             pending_text,
             error_message: None,
+            is_loading: false,
+            loading_animation_time: 0.0,
         }
     }
 }
