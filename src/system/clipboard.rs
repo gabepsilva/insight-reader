@@ -1,37 +1,27 @@
 //! Clipboard and selection reading utilities
 
+#[cfg(target_os = "macos")]
+use core_foundation::string::CFString;
+#[cfg(target_os = "linux")]
 use std::process::Command;
 
-use tracing::{debug, info, trace, warn};
+use tracing::{debug, info, warn};
+#[cfg(target_os = "linux")]
+use tracing::trace;
 
 /// Creates a preview string for logging (first 200 chars).
 fn text_preview(text: &str) -> String {
     if text.chars().count() > 200 {
-        text.chars().take(200).collect::<String>() + "..."
+        format!("{}...", text.chars().take(200).collect::<String>())
     } else {
         text.to_string()
     }
 }
 
-/// Restores text to the clipboard.
-fn restore_clipboard(text: &str) -> Result<(), std::io::Error> {
-    use std::io::Write;
-    let mut child = Command::new("pbcopy")
-        .stdin(std::process::Stdio::piped())
-        .spawn()?;
-    
-    if let Some(mut stdin) = child.stdin.take() {
-        stdin.write_all(text.as_bytes())?;
-        stdin.flush()?;
-    }
-    
-    child.wait()?;
-    Ok(())
-}
 
 /// Gets the currently selected text.
 /// - On Linux: Uses wl-paste for Wayland, xclip for X11 (PRIMARY selection)
-/// - On macOS: Uses AppleScript to copy selection to clipboard, then reads it
+/// - On macOS: Uses Accessibility API to read selected text directly (no clipboard modification)
 /// - On other platforms: Returns None
 pub fn get_selected_text() -> Option<String> {
     #[cfg(target_os = "macos")]
@@ -104,85 +94,90 @@ fn get_selected_text_linux() -> Option<String> {
 
 #[cfg(target_os = "macos")]
 fn get_selected_text_macos() -> Option<String> {
-    info!("Attempting to read selected text on macOS");
+    info!("Attempting to read selected text on macOS using Accessibility API");
     
-    // Strategy: Save current clipboard, copy selection, read clipboard, restore clipboard
-    // This requires accessibility permissions but is the most reliable method
+    use core_foundation::base::TCFType;
+    use core_foundation::string::CFStringRef;
+    use std::ffi::c_void;
+    use std::os::raw::c_uint;
+    use std::ptr;
     
-    // Step 1: Save current clipboard
-    let saved_clipboard = Command::new("pbpaste")
-        .output()
-        .ok()
-        .and_then(|output| {
-            if output.status.success() {
-                let text = String::from_utf8_lossy(&output.stdout).trim().to_string();
-                (!text.is_empty()).then_some(text)
-            } else {
-                None
-            }
-        });
+    // Opaque pointer types (avoiding experimental extern types)
+    #[repr(C)]
+    struct AXUIElement([u8; 0]);
     
-    // Step 2: Copy selection to clipboard using AppleScript
-    // This simulates Cmd+C which requires accessibility permissions
-    let copy_script = r#"
-        tell application "System Events"
-            keystroke "c" using command down
-        end tell
-    "#;
+    // Link against ApplicationServices framework
+    #[link(name = "ApplicationServices", kind = "framework")]
+    extern "C" {
+        fn AXUIElementCreateSystemWide() -> *mut AXUIElement;
+        fn AXUIElementCopyAttributeValue(
+            element: *mut AXUIElement,
+            attribute: CFStringRef,
+            value: *mut *mut c_void,
+        ) -> c_uint;
+        fn CFRelease(cf: *const c_void);
+    }
     
-    let copy_output = Command::new("osascript")
-        .arg("-e")
-        .arg(copy_script)
-        .output();
+    // Error codes
+    const K_AX_ERROR_SUCCESS: c_uint = 0;
     
-    match copy_output {
-        Ok(output) if output.status.success() => {
-            // Step 3: Small delay to ensure clipboard is updated
-            std::thread::sleep(std::time::Duration::from_millis(50));
-            
-            // Step 4: Read clipboard
-            let clipboard_text = Command::new("pbpaste")
-                .output()
-                .ok()
-                .and_then(|output| {
-                    if output.status.success() {
-                        let text = String::from_utf8_lossy(&output.stdout).trim().to_string();
-                        (!text.is_empty()).then_some(text)
-                    } else {
-                        None
-                    }
-                });
-            
-            // Step 5: Restore original clipboard if we saved one
-            if let Some(ref saved) = saved_clipboard {
-                if let Err(e) = restore_clipboard(saved) {
-                    debug!(error = %e, "Failed to restore clipboard");
-                }
-            }
-            
-            if let Some(ref text) = clipboard_text {
-                info!(bytes = text.len(), "Successfully retrieved selected text");
-                debug!(text = %text_preview(text), "Captured text content");
-            } else {
-                debug!("No text in clipboard after copy attempt (no text selected or accessibility permissions not granted)");
-            }
-            
-            clipboard_text
+    // Constants for Accessibility attributes
+    let k_ax_focused_ui_element: &str = "AXFocusedUIElement";
+    let k_ax_selected_text: &str = "AXSelectedText";
+    
+    unsafe {
+        // Get system-wide accessibility element
+        let system_element = AXUIElementCreateSystemWide();
+        if system_element.is_null() {
+            warn!("Failed to create system-wide accessibility element");
+            return None;
         }
-        Ok(output) => {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            warn!(
-                code = ?output.status.code(),
-                stderr = %stderr.trim(),
-                "AppleScript copy command failed (may need accessibility permissions)"
-            );
-            None
+        
+        // Get focused UI element directly from system-wide element
+        let focused_ui_attr = CFString::new(k_ax_focused_ui_element);
+        let mut focused_ui: *mut c_void = ptr::null_mut();
+        let result = AXUIElementCopyAttributeValue(
+            system_element,
+            focused_ui_attr.as_concrete_TypeRef(),
+            &mut focused_ui,
+        );
+        
+        CFRelease(system_element as *const c_void);
+        
+        if result != K_AX_ERROR_SUCCESS || focused_ui.is_null() {
+            debug!("Could not get focused UI element (may need accessibility permissions or no text selected)");
+            return None;
         }
-        Err(e) => {
-            warn!(error = %e, "Failed to execute osascript command");
-            None
+        
+        // Get selected text
+        let selected_text_attr = CFString::new(k_ax_selected_text);
+        let mut selected_text_value: *mut c_void = ptr::null_mut();
+        let result = AXUIElementCopyAttributeValue(
+            focused_ui as *mut AXUIElement,
+            selected_text_attr.as_concrete_TypeRef(),
+            &mut selected_text_value,
+        );
+        
+        CFRelease(focused_ui as *const c_void);
+        
+        if result != K_AX_ERROR_SUCCESS || selected_text_value.is_null() {
+            debug!("No text selected or element does not support AXSelectedText");
+            return None;
         }
+        
+        // Convert CFString to Rust String
+        let cf_string = CFString::wrap_under_get_rule(selected_text_value as CFStringRef);
+        let text = cf_string.to_string();
+        CFRelease(selected_text_value);
+        
+        if text.trim().is_empty() {
+            debug!("Selected text is empty");
+            return None;
+        }
+        
+        info!(bytes = text.len(), "Successfully retrieved selected text via Accessibility API");
+        debug!(text = %text_preview(&text), "Captured text content");
+        Some(text)
     }
 }
-
 
