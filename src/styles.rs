@@ -47,11 +47,70 @@ pub fn circle_button_style(_theme: &Theme, status: button::Status) -> button::St
 
 pub fn modal_content_style(_theme: &Theme) -> container::Style {
     container::Style {
-        background: Some(Background::Color(Color::from_rgb(0.1, 0.1, 0.1))),
+        background: Some(Background::Color(Color::from_rgb(0.12, 0.12, 0.14))),
         border: Border {
-            color: Color::WHITE,
+            color: Color::from_rgba(1.0, 1.0, 1.0, 0.15),
+            width: 1.0,
+            radius: 12.0.into(),
+        },
+        ..Default::default()
+    }
+}
+
+/// Style for section containers (grouped settings)
+pub fn section_style(_theme: &Theme) -> container::Style {
+    container::Style {
+        background: Some(Background::Color(Color::from_rgb(0.08, 0.08, 0.10))),
+        border: Border {
+            color: Color::from_rgba(1.0, 1.0, 1.0, 0.08),
             width: 1.0,
             radius: 8.0.into(),
+        },
+        ..Default::default()
+    }
+}
+
+/// Style for the close button in settings
+pub fn close_button_style(_theme: &Theme, status: button::Status) -> button::Style {
+    let base_bg = match status {
+        button::Status::Active => Color::TRANSPARENT,
+        button::Status::Hovered => Color::from_rgba(1.0, 1.0, 1.0, 0.15),
+        button::Status::Pressed => Color::from_rgba(1.0, 1.0, 1.0, 0.25),
+        _ => Color::TRANSPARENT,
+    };
+    
+    button::Style {
+        background: Some(Background::Color(base_bg)),
+        text_color: Color::from_rgba(1.0, 1.0, 1.0, 0.7),
+        border: Border {
+            radius: 6.0.into(),
+            ..Default::default()
+        },
+        ..Default::default()
+    }
+}
+
+/// Style for error message containers
+pub fn error_container_style(_theme: &Theme) -> container::Style {
+    container::Style {
+        background: Some(Background::Color(Color::from_rgba(1.0, 0.2, 0.2, 0.15))),
+        border: Border {
+            color: Color::from_rgb(1.0, 0.3, 0.3),
+            width: 1.0,
+            radius: 6.0.into(),
+        },
+        ..Default::default()
+    }
+}
+
+/// Style for the header bar at the top of settings
+pub fn header_style(_theme: &Theme) -> container::Style {
+    container::Style {
+        background: Some(Background::Color(Color::from_rgb(0.10, 0.10, 0.12))),
+        border: Border {
+            color: Color::from_rgba(1.0, 1.0, 1.0, 0.1),
+            width: 0.0,
+            radius: 0.0.into(),
         },
         ..Default::default()
     }

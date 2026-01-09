@@ -1,11 +1,12 @@
 //! UI rendering logic
 
-use iced::widget::{button, checkbox, column, container, mouse_area, progress_bar, radio, row, svg, text, Space};
-use iced::{Alignment, Color, Element, Length};
+use iced::widget::{button, checkbox, column, container, mouse_area, progress_bar, radio, row, scrollable, svg, text, Space};
+use iced::{Alignment, Background, Color, Element, Length};
 
 use crate::model::{App, LogLevel, Message, PlaybackState, TTSBackend};
 use crate::styles::{
-    circle_button_style, modal_content_style, transparent_button_style, wave_bar_style,
+    circle_button_style, close_button_style, error_container_style, header_style,
+    modal_content_style, section_style, transparent_button_style, wave_bar_style,
     white_checkbox_style, white_radio_style, window_style,
 };
 
@@ -93,139 +94,181 @@ fn error_text(content: &str, size: u32) -> text::Text<'_> {
 /// Settings window view - floating modal style
 pub fn settings_window_view<'a>(app: &'a App) -> Element<'a, Message> {
     let close_button = button(
-        container(white_text("✕", 20))
-            .width(Length::Fixed(32.0))
-            .height(Length::Fixed(32.0))
-            .center_x(Length::Fixed(32.0))
-            .center_y(Length::Fixed(32.0)),
+        container(white_text("✕", 18))
+            .width(Length::Fixed(28.0))
+            .height(Length::Fixed(28.0))
+            .center_x(Length::Fixed(28.0))
+            .center_y(Length::Fixed(28.0)),
     )
-    .style(circle_button_style)
+    .style(close_button_style)
     .on_press(Message::CloseSettings);
 
     // Error message display (if present)
     let error_display: Element<'a, Message> = if let Some(error_msg) = &app.error_message {
-        column![
-            Space::new().height(Length::Fixed(8.0)),
-            container(
-                error_text(error_msg, 12)
-                    .width(Length::Fill)
-            )
-            .width(Length::Fill)
-            .padding(8)
-            .style(|_theme| {
-                iced::widget::container::Style {
-                    background: Some(iced::Background::Color(Color::from_rgba(1.0, 0.2, 0.2, 0.2))),
-                    border: iced::Border {
-                        color: Color::from_rgb(1.0, 0.3, 0.3),
-                        width: 1.0,
-                        radius: 4.0.into(),
-                    },
-                    ..Default::default()
-                }
-            }),
-        ]
-        .spacing(4)
+        container(
+            error_text(error_msg, 13)
+                .width(Length::Fill)
+        )
+        .width(Length::Fill)
+        .padding(12)
+        .style(error_container_style)
         .into()
     } else {
         column![].spacing(0).into()
     };
 
-    let provider_selector = column![
-        white_text("TTS Provider", 18),
-        Space::new().height(Length::Fixed(12.0)),
-        row![
-            radio(
-                "Piper (local, offline)",
-                TTSBackend::Piper,
-                Some(app.selected_backend),
-                Message::ProviderSelected
-            )
-            .style(white_radio_style),
-            radio(
-                "AWS Polly (cloud)",
-                TTSBackend::AwsPolly,
-                Some(app.selected_backend),
-                Message::ProviderSelected
-            )
-            .style(white_radio_style),
-        ]
-        .spacing(16),
-        error_display,
+    // TTS Provider section
+    let provider_controls = column![
+        radio(
+            "Piper (local, offline)",
+            TTSBackend::Piper,
+            Some(app.selected_backend),
+            Message::ProviderSelected
+        )
+        .style(white_radio_style),
+        Space::new().height(Length::Fixed(6.0)),
+        radio(
+            "AWS Polly (cloud)",
+            TTSBackend::AwsPolly,
+            Some(app.selected_backend),
+            Message::ProviderSelected
+        )
+        .style(white_radio_style),
     ]
-    .spacing(4);
+    .spacing(0);
 
-    let log_level_selector = column![
-        white_text("Log level", 18),
-        Space::new().height(Length::Fixed(12.0)),
-        row![
-            radio(
-                "Error",
-                LogLevel::Error,
-                Some(app.log_level),
-                Message::LogLevelSelected
-            )
-            .style(white_radio_style),
-            radio(
-                "Warn",
-                LogLevel::Warn,
-                Some(app.log_level),
-                Message::LogLevelSelected
-            )
-            .style(white_radio_style),
-            radio(
-                "Info",
-                LogLevel::Info,
-                Some(app.log_level),
-                Message::LogLevelSelected
-            )
-            .style(white_radio_style),
-            radio(
-                "Debug",
-                LogLevel::Debug,
-                Some(app.log_level),
-                Message::LogLevelSelected
-            )
-            .style(white_radio_style),
-            radio(
-                "Trace",
-                LogLevel::Trace,
-                Some(app.log_level),
-                Message::LogLevelSelected
-            )
-            .style(white_radio_style),
+    let provider_section = container(
+        column![
+            row![
+                container(
+                    white_text("TTS Provider", 14)
+                        .style(|_theme| iced::widget::text::Style {
+                            color: Some(Color::from_rgba(1.0, 1.0, 1.0, 0.85)),
+                        })
+                )
+                .width(Length::Fixed(120.0))
+                .align_x(Alignment::Start),
+                Space::new().width(Length::Fixed(16.0)),
+                container(provider_controls)
+                    .width(Length::Fill)
+                    .align_x(Alignment::Start),
+            ]
+            .align_y(Alignment::Center)
+            .width(Length::Fill)
+            .padding([12.0, 16.0]),
+            error_display,
         ]
-        .spacing(16),
-    ]
-    .spacing(4);
+        .spacing(8)
+    )
+    .style(section_style);
 
-    let text_cleanup_toggle = column![
-        white_text("Text Cleanup", 18),
-        Space::new().height(Length::Fixed(12.0)),
-        checkbox(app.text_cleanup_enabled)
-            .label("Enable text cleanup (sends text to local API before TTS)")
-            .on_toggle(Message::TextCleanupToggled)
-            .style(white_checkbox_style),
+    // Log Level section - compact horizontal layout
+    let log_level_controls = row![
+        radio("Error", LogLevel::Error, Some(app.log_level), Message::LogLevelSelected)
+            .style(white_radio_style),
+        radio("Warn", LogLevel::Warn, Some(app.log_level), Message::LogLevelSelected)
+            .style(white_radio_style),
+        radio("Info", LogLevel::Info, Some(app.log_level), Message::LogLevelSelected)
+            .style(white_radio_style),
+        radio("Debug", LogLevel::Debug, Some(app.log_level), Message::LogLevelSelected)
+            .style(white_radio_style),
+        radio("Trace", LogLevel::Trace, Some(app.log_level), Message::LogLevelSelected)
+            .style(white_radio_style),
     ]
-    .spacing(4);
+    .spacing(16);
+
+    let log_level_section = container(
+        row![
+            container(
+                white_text("Log Level", 14)
+                    .style(|_theme| iced::widget::text::Style {
+                        color: Some(Color::from_rgba(1.0, 1.0, 1.0, 0.85)),
+                    })
+            )
+            .width(Length::Fixed(120.0))
+            .align_x(Alignment::Start),
+            Space::new().width(Length::Fixed(16.0)),
+            container(log_level_controls)
+                .width(Length::Fill)
+                .align_x(Alignment::Start),
+        ]
+        .align_y(Alignment::Center)
+        .width(Length::Fill)
+        .padding([12.0, 16.0])
+    )
+    .style(section_style);
+
+    // Text Cleanup section
+    let text_cleanup_control = checkbox(app.text_cleanup_enabled)
+        .label("Enable text cleanup (sends text to local API before TTS)")
+        .on_toggle(Message::TextCleanupToggled)
+        .style(white_checkbox_style);
+
+    let text_cleanup_section = container(
+        row![
+            container(
+                white_text("Text Cleanup", 14)
+                    .style(|_theme| iced::widget::text::Style {
+                        color: Some(Color::from_rgba(1.0, 1.0, 1.0, 0.85)),
+                    })
+            )
+            .width(Length::Fixed(120.0))
+            .align_x(Alignment::Start),
+            Space::new().width(Length::Fixed(16.0)),
+            container(text_cleanup_control)
+                .width(Length::Fill)
+                .align_x(Alignment::Start),
+        ]
+        .align_y(Alignment::Center)
+        .width(Length::Fill)
+        .padding([12.0, 16.0])
+    )
+    .style(section_style);
 
     container(
         column![
-            row![
-                white_text("Settings", 24),
-                Space::new().width(Length::Fill),
-                close_button,
-            ]
+            // Header bar at top (fixed, not scrollable)
+            container(
+                row![
+                    white_text("Settings", 20)
+                        .style(|_theme| iced::widget::text::Style {
+                            color: Some(Color::WHITE),
+                        }),
+                    Space::new().width(Length::Fill),
+                    close_button,
+                ]
+                .width(Length::Fill)
+                .align_y(Alignment::Center)
+            )
             .width(Length::Fill)
-            .align_y(Alignment::Center),
-            Space::new().height(Length::Fixed(20.0)),
-            provider_selector,
-            Space::new().height(Length::Fixed(16.0)),
-            log_level_selector,
-            Space::new().height(Length::Fixed(16.0)),
-            text_cleanup_toggle,
+            .padding([20.0, 24.0])
+            .style(header_style),
+            // Scrollable content area
+            scrollable(
+                container(
+                    column![
+                        provider_section,
+                        Space::new().height(Length::Fixed(12.0)),
+                        log_level_section,
+                        Space::new().height(Length::Fixed(12.0)),
+                        text_cleanup_section,
+                    ]
+                    .padding([20.0, 24.0])
+                    .spacing(0)
+                    .align_x(Alignment::Start),
+                )
+                .width(Length::Fill)
+                .style(|_theme| container::Style {
+                    background: Some(Background::Color(Color::from_rgb(0.12, 0.12, 0.14))),
+                    ..Default::default()
+                }),
+            )
+            .width(Length::Fill)
+            .height(Length::Fill),
         ]
-        .padding(30)
-        .align_x(Alignment::Center),
+        .spacing(0)
+        .width(Length::Fill)
+        .height(Length::Fill),
     )
     .width(Length::Fill)
     .height(Length::Fill)
