@@ -329,20 +329,33 @@ install_binary() {
     
     # Try to copy from local target/release directory
     local local_binary=""
+    local local_binary_full=""
     
     # Check if we're in the project directory
     if [ -f "Cargo.toml" ] && [ -d "target/release" ] && [ -f "target/release/grars" ]; then
         local_binary="target/release/grars"
+        # Get full absolute path
+        if command_exists realpath; then
+            local_binary_full=$(realpath "$local_binary")
+        else
+            local_binary_full="$(cd "$(dirname "$local_binary")" && pwd)/$(basename "$local_binary")"
+        fi
         log_info "Found local build in target/release/grars"
     # Also check current directory
     elif [ -f "grars" ] && [ -x "grars" ]; then
         local_binary="grars"
+        # Get full absolute path
+        if command_exists realpath; then
+            local_binary_full=$(realpath "$local_binary")
+        else
+            local_binary_full="$(cd "$(dirname "$local_binary")" && pwd)/$(basename "$local_binary")"
+        fi
         log_info "Found grars binary in current directory"
     fi
     
     # If local binary found, copy it
     if [ -n "$local_binary" ]; then
-        log_info "Copying binary from $local_binary to $GRARS_BIN"
+        log_info "Copying binary from $local_binary_full to $GRARS_BIN"
         cp "$local_binary" "$GRARS_BIN"
         chmod +x "$GRARS_BIN"
         log_success "Binary copied and installed to $GRARS_BIN"
