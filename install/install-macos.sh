@@ -219,26 +219,18 @@ create_app_bundle() {
     APP_MACOS="$APP_CONTENTS/MacOS"
     APP_RESOURCES="$APP_CONTENTS/Resources"
     
-    # Get script directory to find logo
-    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd || pwd)"
-    LOGO_PNG="$SCRIPT_DIR/assets/logo.png"
-    
-    # Check if PNG exists locally
-    if [ -f "$LOGO_PNG" ]; then
-        log_info "Found PNG logo at $LOGO_PNG"
-        LOGO_FILE="$LOGO_PNG"
+    # Download logo from GitHub
+    log_info "Downloading logo from GitHub..."
+    local temp_logo
+    temp_logo=$(mktemp)
+    ICON_URL="https://raw.githubusercontent.com/$GITHUB_REPO/master/assets/logo.png"
+    if download_file "$ICON_URL" "$temp_logo"; then
+        LOGO_FILE="$temp_logo"
+        log_success "Logo downloaded from GitHub"
     else
-        log_warn "Logo not found at $LOGO_PNG"
-        log_info "Trying to download from GitHub..."
-        mkdir -p "$(dirname "$LOGO_PNG")"
-        ICON_URL="https://raw.githubusercontent.com/$GITHUB_REPO/master/assets/logo.png"
-        if download_file "$ICON_URL" "$LOGO_PNG"; then
-            LOGO_FILE="$LOGO_PNG"
-            log_info "Downloaded PNG logo from GitHub"
-        else
-            log_warn "Failed to download logo, app bundle will be created without icon"
-            LOGO_FILE=""
-        fi
+        log_warn "Failed to download logo, app bundle will be created without icon"
+        LOGO_FILE=""
+        rm -f "$temp_logo" 2>/dev/null || true
     fi
     
     # Remove existing app bundle if it exists
@@ -319,10 +311,12 @@ create_app_bundle() {
             log_info "Using PNG icon (sips not available for resizing)"
         fi
         
-        # Cleanup temp directory
+        # Cleanup temp directory and logo file
         rm -rf "$ICON_TEMP_DIR"
+        rm -f "$temp_logo" 2>/dev/null || true
     else
         log_warn "No logo available, app bundle created without icon"
+        rm -f "$temp_logo" 2>/dev/null || true
     fi
     
     # Create Info.plist

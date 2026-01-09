@@ -269,46 +269,24 @@ install_desktop() {
     DESKTOP_FILE="$DESKTOP_DIR/grars.desktop"
     ICON_FILE="$ICON_DIR/grars.svg"
     
-    # Get script directory (or current directory if script is not available)
-    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd || pwd)"
-    
     # Create directories
     mkdir -p "$DESKTOP_DIR"
     mkdir -p "$ICON_DIR"
     
     # GitHub URLs for desktop file and icon
-    DESKTOP_URL="https://raw.githubusercontent.com/$GITHUB_REPO/master/grars.desktop"
+    DESKTOP_URL="https://raw.githubusercontent.com/$GITHUB_REPO/master/install/grars.desktop"
     ICON_URL="https://raw.githubusercontent.com/$GITHUB_REPO/master/assets/logo.svg"
     
-    # Try to find desktop file locally first
-    local desktop_source=""
-    local temp_desktop=""
-    if [ -f "$SCRIPT_DIR/grars.desktop" ]; then
-        desktop_source="$SCRIPT_DIR/grars.desktop"
-        log_info "Found desktop file locally at $desktop_source"
-    else
-        # Download from GitHub
-        log_info "Desktop file not found locally. Downloading from GitHub..."
-        temp_desktop=$(mktemp)
-        if download_file "$DESKTOP_URL" "$temp_desktop"; then
-            desktop_source="$temp_desktop"
-            log_success "Desktop file downloaded from GitHub"
-        else
-            rm -f "$temp_desktop" 2>/dev/null || true
-            log_warn "Failed to download desktop file from GitHub (skipping)"
-            desktop_source=""
-        fi
-    fi
-    
-    # Install desktop file if we have a source
-    if [ -n "$desktop_source" ] && [ -f "$desktop_source" ]; then
+    # Download desktop file from GitHub
+    log_info "Downloading desktop file from GitHub..."
+    local temp_desktop
+    temp_desktop=$(mktemp)
+    if download_file "$DESKTOP_URL" "$temp_desktop"; then
         # Process desktop file: replace $HOME with actual home directory
-        sed "s#\\\$HOME#$HOME#g" "$desktop_source" > "$DESKTOP_FILE"
+        sed "s#\\\$HOME#$HOME#g" "$temp_desktop" > "$DESKTOP_FILE"
         chmod 644 "$DESKTOP_FILE"
         log_success "Desktop file installed to $DESKTOP_FILE"
-        
-        # Clean up temporary file if it was downloaded
-        [ "$desktop_source" = "$temp_desktop" ] && rm -f "$temp_desktop" 2>/dev/null || true
+        rm -f "$temp_desktop" 2>/dev/null || true
         
         # Update desktop database (try multiple methods for different DEs)
         # KDE uses kbuildsycoca (Plasma 5/6)
@@ -324,35 +302,19 @@ install_desktop() {
             update-desktop-database "$DESKTOP_DIR" 2>/dev/null || true
             log_info "Desktop database updated"
         fi
-    fi
-    
-    # Try to find icon locally first
-    local icon_source=""
-    local temp_icon=""
-    if [ -f "$SCRIPT_DIR/assets/logo.svg" ]; then
-        icon_source="$SCRIPT_DIR/assets/logo.svg"
-        log_info "Found icon locally at $icon_source"
     else
-        # Download from GitHub
-        log_info "Icon not found locally. Downloading from GitHub..."
-        temp_icon=$(mktemp)
-        if download_file "$ICON_URL" "$temp_icon"; then
-            icon_source="$temp_icon"
-            log_success "Icon downloaded from GitHub"
-        else
-            rm -f "$temp_icon" 2>/dev/null || true
-            log_warn "Failed to download icon from GitHub (skipping)"
-            icon_source=""
-        fi
+        log_warn "Failed to download desktop file from GitHub (skipping)"
+        rm -f "$temp_desktop" 2>/dev/null || true
     fi
     
-    # Install icon if we have a source
-    if [ -n "$icon_source" ] && [ -f "$icon_source" ]; then
-        cp "$icon_source" "$ICON_FILE"
+    # Download icon from GitHub
+    log_info "Downloading icon from GitHub..."
+    local temp_icon
+    temp_icon=$(mktemp)
+    if download_file "$ICON_URL" "$temp_icon"; then
+        cp "$temp_icon" "$ICON_FILE"
         log_success "Icon installed to $ICON_FILE"
-        
-        # Clean up temporary file if it was downloaded
-        [ "$icon_source" = "$temp_icon" ] && rm -f "$temp_icon" 2>/dev/null || true
+        rm -f "$temp_icon" 2>/dev/null || true
         
         # Update icon cache (try multiple methods for different DEs)
         # GTK-based DEs (GNOME, XFCE, etc.)
