@@ -43,6 +43,7 @@ pub enum Message {
     TTSInitialized(Result<(), String>), // Result of async TTS initialization
     SelectedTextFetched(Option<String>), // Result of async text selection fetch
     TextCleanupResponse(Result<String, String>), // Result of text cleanup API call
+    StartDrag, // Begin dragging the window
 }
 
 /// Application state.

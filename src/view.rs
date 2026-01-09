@@ -1,6 +1,6 @@
 //! UI rendering logic
 
-use iced::widget::{button, checkbox, column, container, progress_bar, radio, row, svg, text, Space};
+use iced::widget::{button, checkbox, column, container, mouse_area, progress_bar, radio, row, svg, text, Space};
 use iced::{Alignment, Color, Element, Length};
 
 use crate::model::{App, LogLevel, Message, PlaybackState, TTSBackend};
@@ -336,10 +336,13 @@ pub fn main_view(app: &App) -> Element<'_, Message> {
     .align_y(Alignment::Center)
     .padding([4.0, 10.0]); // [top/bottom, left/right]
 
-    // 8. Outer container with window styling
-    container(content)
-        .width(Length::Fill)
-        .height(Length::Fill)
-        .style(window_style)
-        .into()
+    // 8. Outer container with window styling, wrapped in mouse_area for dragging
+    mouse_area(
+        container(content)
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .style(window_style),
+    )
+    .on_press(Message::StartDrag)
+    .into()
 }

@@ -8,51 +8,77 @@ RELEASE_DIR := target/release
 BUILD_DIR := build
 
 # Detect platform (OS and architecture)
-UNAME_S := $(shell uname -s 2>/dev/null || echo "Unknown")
-UNAME_M := $(shell uname -m 2>/dev/null || echo "unknown")
-
-# Map OS names (normalize to lowercase)
-# Supported: linux, macos, windows, freebsd, openbsd
-ifeq ($(shell echo $(UNAME_S) | tr A-Z a-z),linux)
-	OS := linux
-else ifeq ($(shell echo $(UNAME_S) | tr A-Z a-z),darwin)
-	OS := macos
-else ifeq ($(shell echo $(UNAME_S) | tr A-Z a-z),mingw32)
-	OS := windows
-else ifeq ($(shell echo $(UNAME_S) | tr A-Z a-z),mingw64)
-	OS := windows
-else ifeq ($(shell echo $(UNAME_S) | tr A-Z a-z),msys_nt)
-	OS := windows
-else ifeq ($(shell echo $(UNAME_S) | tr A-Z a-z),cygwin)
-	OS := windows
-else ifeq ($(shell echo $(UNAME_S) | tr A-Z a-z),freebsd)
-	OS := freebsd
-else ifeq ($(shell echo $(UNAME_S) | tr A-Z a-z),openbsd)
-	OS := openbsd
+# If TARGET is set, parse it for cross-compilation; otherwise use native platform
+ifdef TARGET
+	# Parse TARGET triple: arch-vendor-os or arch-vendor-os-env
+	# Extract architecture (first field) and OS (third field)
+	TARGET_ARCH := $(shell echo $(TARGET) | cut -d'-' -f1)
+	TARGET_OS_RAW := $(shell echo $(TARGET) | cut -d'-' -f3)
+	# Use parsed values from TARGET
+	ARCH := $(TARGET_ARCH)
+	# Map target OS to our OS names
+	ifeq ($(TARGET_OS_RAW),darwin)
+		OS := macos
+	else ifeq ($(TARGET_OS_RAW),linux)
+		OS := linux
+	else ifeq ($(TARGET_OS_RAW),windows)
+		OS := windows
+	else ifeq ($(TARGET_OS_RAW),freebsd)
+		OS := freebsd
+	else ifeq ($(TARGET_OS_RAW),openbsd)
+		OS := openbsd
+	else
+		# Default to linux if OS cannot be determined from TARGET
+		OS := linux
+	endif
 else
-	# Default to linux if OS cannot be detected
-	OS := linux
-endif
+	# Native platform detection
+	UNAME_S := $(shell uname -s 2>/dev/null || echo "Unknown")
+	UNAME_M := $(shell uname -m 2>/dev/null || echo "unknown")
 
-# Map architecture names
-# Supported: x86_64, aarch64, armv7, i686
-ifeq ($(UNAME_M),x86_64)
-	ARCH := x86_64
-else ifeq ($(UNAME_M),amd64)
-	ARCH := x86_64
-else ifeq ($(UNAME_M),aarch64)
-	ARCH := aarch64
-else ifeq ($(UNAME_M),arm64)
-	ARCH := aarch64
-else ifeq ($(UNAME_M),armv7l)
-	ARCH := armv7
-else ifeq ($(UNAME_M),i386)
-	ARCH := i686
-else ifeq ($(UNAME_M),i686)
-	ARCH := i686
-else
-	# Default to x86_64 if architecture cannot be detected
-	ARCH := x86_64
+	# Map OS names (normalize to lowercase)
+	# Supported: linux, macos, windows, freebsd, openbsd
+	ifeq ($(shell echo $(UNAME_S) | tr A-Z a-z),linux)
+		OS := linux
+	else ifeq ($(shell echo $(UNAME_S) | tr A-Z a-z),darwin)
+		OS := macos
+	else ifeq ($(shell echo $(UNAME_S) | tr A-Z a-z),mingw32)
+		OS := windows
+	else ifeq ($(shell echo $(UNAME_S) | tr A-Z a-z),mingw64)
+		OS := windows
+	else ifeq ($(shell echo $(UNAME_S) | tr A-Z a-z),msys_nt)
+		OS := windows
+	else ifeq ($(shell echo $(UNAME_S) | tr A-Z a-z),cygwin)
+		OS := windows
+	else ifeq ($(shell echo $(UNAME_S) | tr A-Z a-z),freebsd)
+		OS := freebsd
+	else ifeq ($(shell echo $(UNAME_S) | tr A-Z a-z),openbsd)
+		OS := openbsd
+	else
+		# Default to linux if OS cannot be detected
+		OS := linux
+	endif
+
+	# Map architecture names
+	# Supported: x86_64, aarch64, armv7, i686
+	ifeq ($(UNAME_M),x86_64)
+		ARCH := x86_64
+	else ifeq ($(UNAME_M),amd64)
+		ARCH := x86_64
+	else ifeq ($(UNAME_M),aarch64)
+		ARCH := aarch64
+	else ifeq ($(UNAME_M),arm64)
+		ARCH := aarch64
+	else ifeq ($(UNAME_M),armv7l)
+		ARCH := armv7
+	else ifeq ($(UNAME_M),i386)
+		ARCH := i686
+	else ifeq ($(UNAME_M),i686)
+		ARCH := i686
+	else
+		# Default to x86_64 if architecture cannot be detected
+		ARCH := x86_64
+	endif
 endif
 
 # Build artifact name with version and platform
@@ -61,7 +87,7 @@ ARTIFACT_NAME := $(BINARY_NAME)-$(OS)-$(ARCH)
 ARTIFACT_PATH := $(BUILD_DIR)/$(ARTIFACT_NAME)
 SYMLINK_PATH := $(BUILD_DIR)/$(BINARY_NAME)
 
-.PHONY: all build clean install help
+.PHONY: all build clean install help copy-ubuntu
 
 all: build
 
@@ -114,15 +140,25 @@ install: build
 	@chmod +x ~/.local/bin/$(BINARY_NAME)
 	@echo "✓ Installed to ~/.local/bin/$(BINARY_NAME)"
 
+# Copy debug binary to Ubuntu VM (port 2222)
+copy-ubuntu:
+	@echo "Building debug binary..."
+	@cargo build
+	@echo "Copying debug binary to Ubuntu VM..."
+	@scp -P 2222 target/debug/$(BINARY_NAME) vboxuser@localhost:/tmp/$(BINARY_NAME)
+	@ssh -p 2222 vboxuser@localhost "cp /tmp/$(BINARY_NAME) ~/.local/bin/$(BINARY_NAME) && chmod +x ~/.local/bin/$(BINARY_NAME)"
+	@echo "✓ Copied to Ubuntu VM (~/.local/bin/$(BINARY_NAME))"
+
 # Show help
 help:
 	@echo "insight-reader Makefile - Build release artifacts with version and platform info"
 	@echo ""
 	@echo "Usage:"
-	@echo "  make build    - Build release binary and create versioned artifact"
-	@echo "  make clean    - Remove all build artifacts (build/ and target/)"
-	@echo "  make install  - Build and install binary to ~/.local/bin/insight-reader"
-	@echo "  make help     - Show this help message"
+	@echo "  make build       - Build release binary and create versioned artifact"
+	@echo "  make clean       - Remove all build artifacts (build/ and target/)"
+	@echo "  make install     - Build and install binary to ~/.local/bin/insight-reader"
+	@echo "  make copy-ubuntu - Build debug binary and copy to Ubuntu VM (port 2222)"
+	@echo "  make help        - Show this help message"
 	@echo ""
 	@echo "Build Output:"
 	@echo "  Artifact: $(ARTIFACT_NAME)"

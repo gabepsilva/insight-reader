@@ -468,6 +468,13 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
             }
             Task::none()
         }
+        Message::StartDrag => {
+            if let Some(id) = app.main_window_id {
+                window::drag(id)
+            } else {
+                Task::none()
+            }
+        }
     }
 }
 

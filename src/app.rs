@@ -1,7 +1,7 @@
 //! Iced application adapter (thin UI layer)
 
 use iced::time::{self, Duration};
-use iced::{Element, Size, Subscription, Task};
+use iced::{Element, Point, Size, Subscription, Task};
 use iced::window;
 use tracing::info;
 
@@ -23,6 +23,14 @@ pub fn new() -> (App, Task<Message>) {
         decorations: false,
         transparent: true,
         visible: true,
+        position: window::Position::SpecificWith(|window_size, monitor_size| {
+            // Position at bottom-left corner with small margin
+            let margin = 20.0;
+            Point::new(
+                margin,
+                monitor_size.height - window_size.height - margin,
+            )
+        }),
         ..Default::default()
     });
     let open_task = open_task.map(Message::WindowOpened);
