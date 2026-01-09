@@ -59,7 +59,7 @@ pub fn title(app: &App, window: window::Id) -> String {
     if app.settings_window_id == Some(window) {
         String::from("Settings")
     } else {
-        String::from("Speaking...")
+        String::from("Insight Reader")
     }
 }
 

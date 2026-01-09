@@ -27,7 +27,7 @@ fn main() -> iced::Result {
         // Continue anyway - app can run without logging
     }
 
-    info!("grars starting up");
+    info!("Insight Reader starting up");
 
     // Use daemon for multi-window support (view receives window::Id)
     // Note: Text selection is now fetched asynchronously after UI appears for blazing fast startup

@@ -1,8 +1,6 @@
-# grars
+# Insight Reader
 
-**Graphical Reader Assistant (Rust)**
-
-A modern, lightweight Text-to-Speech (TTS) application written in Rust with Iced GUI. Reads any selected text in your computer and speaks it aloud with a beautiful floating window interface.
+A modern, lightweight Text-to-Speech (TTS) application written in Rust with Iced GUI. Reads any selected text on your computer and speaks it aloud with a beautiful floating window interface.
 
 ## Features
 
@@ -137,7 +135,7 @@ To use AWS Polly, configure your AWS credentials:
 ### Basic Usage
 
 1. **Select text** in any application (browser, editor, etc.)
-2. **Run grars**:
+2. **Run Insight Reader**:
    ```bash
    grars
    ```
@@ -228,9 +226,9 @@ Log level can be changed in the settings window.
 - **Linux X11**: Ensure `xclip` is installed
 - **macOS**: 
   - Grant accessibility permissions: **System Preferences/Settings → Security & Privacy → Privacy → Accessibility**
-  - Add `grars` (or Terminal if running from terminal) to the allowed apps list
-  - Try selecting text before running `grars`
-- Try selecting text before running `grars`
+  - Add Insight Reader (or Terminal if running from terminal) to the allowed apps list
+  - Try selecting text before running Insight Reader
+- Try selecting text before running Insight Reader
 
 ### Piper TTS not found
 

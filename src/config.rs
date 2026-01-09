@@ -1,4 +1,4 @@
-//! Persistent configuration handling for `grars`.
+//! Persistent configuration handling for Insight Reader.
 //!
 //! Persists the selected voice provider and log level in a simple JSON file:
 //! `~/.config/grars/config.json` with fields like:
