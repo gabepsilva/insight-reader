@@ -1,9 +1,9 @@
-# Makefile for grars
+# Makefile for insight-reader
 # Builds release binary with version and platform info
-# Creates versioned artifacts: grars-1.0.0-linux-x86_64, grars-1.0.0-macos-aarch64, etc.
-# Also creates a symlink 'grars' pointing to the versioned binary
+# Creates versioned artifacts: insight-reader-1.0.0-linux-x86_64, insight-reader-1.0.0-macos-aarch64, etc.
+# Also creates a symlink 'insight-reader' pointing to the versioned binary
 
-BINARY_NAME := grars
+BINARY_NAME := insight-reader
 RELEASE_DIR := target/release
 BUILD_DIR := build
 
@@ -56,7 +56,7 @@ else
 endif
 
 # Build artifact name with version and platform
-# Example: grars-linux-x86_64
+# Example: insight-reader-linux-x86_64
 ARTIFACT_NAME := $(BINARY_NAME)-$(OS)-$(ARCH)
 ARTIFACT_PATH := $(BUILD_DIR)/$(ARTIFACT_NAME)
 SYMLINK_PATH := $(BUILD_DIR)/$(BINARY_NAME)
@@ -116,12 +116,12 @@ install: build
 
 # Show help
 help:
-	@echo "grars Makefile - Build release artifacts with version and platform info"
+	@echo "insight-reader Makefile - Build release artifacts with version and platform info"
 	@echo ""
 	@echo "Usage:"
 	@echo "  make build    - Build release binary and create versioned artifact"
 	@echo "  make clean    - Remove all build artifacts (build/ and target/)"
-	@echo "  make install  - Build and install binary to ~/.local/bin/grars"
+	@echo "  make install  - Build and install binary to ~/.local/bin/insight-reader"
 	@echo "  make help     - Show this help message"
 	@echo ""
 	@echo "Build Output:"

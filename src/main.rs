@@ -19,7 +19,7 @@ fn main() -> iced::Result {
         verbosity: config::load_log_level(),
         log_to_stderr: true,
         log_to_file: true,
-        log_dir: None, // Use default: ~/.local/share/grars/logs
+        log_dir: None, // Use default: ~/.local/share/insight-reader/logs
     };
 
     if let Err(e) = logging::init_logging(&log_config) {

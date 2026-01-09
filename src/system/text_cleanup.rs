@@ -5,7 +5,7 @@
 use pulldown_cmark::{Event, Parser, Tag};
 use tracing::{debug, info, warn};
 
-const CLEANUP_API_URL: &str = "http://grars-backend.i.psilva.org/api/content-cleanup";
+const CLEANUP_API_URL: &str = "http://insight-reader-backend.i.psilva.org/api/content-cleanup";
 
 /// Convert markdown to plain text by extracting only text content.
 ///

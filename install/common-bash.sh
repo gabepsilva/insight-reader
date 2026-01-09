@@ -298,8 +298,8 @@ download_and_install_binary() {
     detect_os
     detect_arch
     
-    # Construct binary name: grars-linux-x86_64 or grars-macos-aarch64 (no version in filename)
-    BINARY_NAME="grars-${OS}-${ARCH}"
+    # Construct binary name: insight-reader-linux-x86_64 or insight-reader-macos-aarch64 (no version in filename)
+    BINARY_NAME="insight-reader-${OS}-${ARCH}"
     
     # Determine release tag to use
     if [ -n "${RELEASE_TAG:-}" ]; then

@@ -26,7 +26,7 @@ impl PiperTTSProvider {
     ///
     /// Searches for piper binary and model in standard locations:
     /// 1. Project root: `./venv/bin/piper` (development)
-    /// 2. User installation: `~/.local/share/grars/venv/bin/piper` (XDG Base Directory)
+    /// 2. User installation: `~/.local/share/insight-reader/venv/bin/piper` (XDG Base Directory)
     /// 3. System PATH
     pub fn new() -> Result<Self, TTSError> {
         Self::with_config(None, None)
@@ -73,13 +73,13 @@ impl PiperTTSProvider {
         })
     }
 
-    /// On macOS, check Linux-style path (~/.local/share/grars) for compatibility.
+    /// On macOS, check Linux-style path (~/.local/share/insight-reader) for compatibility.
     #[cfg(target_os = "macos")]
     fn check_linux_style_path(relative_path: &str) -> Option<PathBuf> {
         dirs::home_dir().map(|home| {
             home.join(".local")
                 .join("share")
-                .join("grars")
+                .join("insight-reader")
                 .join(relative_path)
         })
     }
@@ -98,16 +98,16 @@ impl PiperTTSProvider {
             }
         }
 
-        // Check user installation (XDG Base Directory standard: ~/.local/share/grars)
+        // Check user installation (XDG Base Directory standard: ~/.local/share/insight-reader)
         if let Some(data_dir) = dirs::data_dir() {
-            let user_piper = data_dir.join("grars").join("venv").join("bin").join("piper");
+            let user_piper = data_dir.join("insight-reader").join("venv").join("bin").join("piper");
             if user_piper.exists() {
                 debug!(path = %user_piper.display(), "Using user-installed piper binary");
                 return user_piper;
             }
         }
 
-        // On macOS, also check Linux-style location (~/.local/share/grars)
+        // On macOS, also check Linux-style location (~/.local/share/insight-reader)
         // since install scripts may use this location
         #[cfg(target_os = "macos")]
         {
@@ -136,7 +136,7 @@ impl PiperTTSProvider {
         // Fallback to user location (will fail validation)
         let fallback = dirs::data_dir()
             .unwrap_or_else(|| PathBuf::from("/tmp"))
-            .join("grars")
+            .join("insight-reader")
             .join("venv")
             .join("bin")
             .join("piper");
@@ -163,9 +163,9 @@ impl PiperTTSProvider {
             }
         }
 
-        // Check user installation (XDG Base Directory standard: ~/.local/share/grars)
+        // Check user installation (XDG Base Directory standard: ~/.local/share/insight-reader)
         if let Some(data_dir) = dirs::data_dir() {
-            let user_model = data_dir.join("grars").join("models").join(model_name);
+            let user_model = data_dir.join("insight-reader").join("models").join(model_name);
             if user_model.with_extension("onnx").exists() {
                 debug!(
                     path = %user_model.with_extension("onnx").display(),
@@ -175,7 +175,7 @@ impl PiperTTSProvider {
             }
         }
 
-        // On macOS, also check Linux-style location (~/.local/share/grars)
+        // On macOS, also check Linux-style location (~/.local/share/insight-reader)
         // since install scripts may use this location
         #[cfg(target_os = "macos")]
         {
@@ -193,7 +193,7 @@ impl PiperTTSProvider {
         // Fallback to user location (will fail validation)
         let fallback = dirs::data_dir()
             .unwrap_or_else(|| PathBuf::from("/tmp"))
-            .join("grars")
+            .join("insight-reader")
             .join("models")
             .join(model_name);
         warn!(

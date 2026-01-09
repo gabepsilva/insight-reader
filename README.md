@@ -18,7 +18,7 @@ A modern, lightweight Text-to-Speech (TTS) application written in Rust with Iced
 - ⚙️ **Settings & Configuration**
   - Provider selection (Piper/Polly)
   - Log level configuration
-  - Persistent settings (saved to `~/.config/grars/config.json`)
+  - Persistent settings (saved to `~/.config/insight-reader/config.json`)
 
 - 🔧 **Additional Features**
   - Automatic clipboard/selection reading at startup
@@ -74,8 +74,8 @@ wget -qO- https://insightreader.xyz/install.sh | bash
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/gabepsilva/grars.git
-   cd grars
+   git clone https://github.com/gabepsilva/insight-reader.git
+   cd insight-reader
    ```
 
 2. Build the project:
@@ -85,21 +85,21 @@ wget -qO- https://insightreader.xyz/install.sh | bash
 
 3. Install the binary:
    ```bash
-   cp target/release/grars ~/.local/bin/
+   cp target/release/insight-reader ~/.local/bin/
    ```
 
 4. Set up Piper TTS (for local TTS):
    ```bash
    # The install.sh script handles this automatically, but manually:
-   mkdir -p ~/.local/share/grars/venv
-   python3 -m venv ~/.local/share/grars/venv
-   source ~/.local/share/grars/venv/bin/activate
+   mkdir -p ~/.local/share/insight-reader/venv
+   python3 -m venv ~/.local/share/insight-reader/venv
+   source ~/.local/share/insight-reader/venv/bin/activate
    pip install piper-tts
    ```
 
 5. Download a Piper voice model:
    ```bash
-   mkdir -p ~/.local/share/grars/models
+   mkdir -p ~/.local/share/insight-reader/models
    # Download a model from https://huggingface.co/rhasspy/piper-voices
    # Example: en_US-lessac-medium
    ```
@@ -137,7 +137,7 @@ To use AWS Polly, configure your AWS credentials:
 1. **Select text** in any application (browser, editor, etc.)
 2. **Run Insight Reader**:
    ```bash
-   grars
+   insight-reader
    ```
 3. The application will:
    - Read the selected text automatically
@@ -158,7 +158,7 @@ Click the settings gear icon to:
 - Adjust log level (Error, Warn, Info, Debug, Trace)
 - View error messages if any issues occur
 
-Settings are automatically saved to `~/.config/grars/config.json`.
+Settings are automatically saved to `~/.config/insight-reader/config.json`.
 
 ## Project Structure
 
@@ -184,7 +184,7 @@ src/
 
 ## Configuration
 
-Configuration is stored in `~/.config/grars/config.json`:
+Configuration is stored in `~/.config/insight-reader/config.json`:
 
 ```json
 {
@@ -201,7 +201,7 @@ Valid values:
 
 Logs are written to:
 - **Stderr**: Real-time console output
-- **File**: `~/.local/share/grars/logs/grars-YYYY-MM-DD.log`
+- **File**: `~/.local/share/insight-reader/logs/insight-reader-YYYY-MM-DD.log`
 
 Log level can be changed in the settings window.
 
@@ -211,7 +211,7 @@ Log level can be changed in the settings window.
 
 - Check that your system audio is working
 - Verify the TTS provider is correctly configured
-- Check logs: `~/.local/share/grars/logs/grars-*.log`
+- Check logs: `~/.local/share/insight-reader/logs/insight-reader-*.log`
 
 ### AWS Polly not working
 
@@ -232,9 +232,9 @@ Log level can be changed in the settings window.
 
 ### Piper TTS not found
 
-- Ensure Python venv is set up: `~/.local/share/grars/venv`
+- Ensure Python venv is set up: `~/.local/share/insight-reader/venv`
 - Verify `piper-tts` is installed in the venv
-- Check that a voice model is downloaded to `~/.local/share/grars/models`
+- Check that a voice model is downloaded to `~/.local/share/insight-reader/models`
 
 ## Development
 

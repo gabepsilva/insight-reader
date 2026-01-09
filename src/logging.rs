@@ -103,7 +103,7 @@ fn resolve_log_dir(config: &LoggingConfig) -> PathBuf {
     config.log_dir.clone().unwrap_or_else(|| {
         dirs::data_local_dir()
             .unwrap_or_else(|| PathBuf::from("/tmp"))
-            .join("grars")
+            .join("insight-reader")
             .join("logs")
     })
 }
@@ -112,7 +112,7 @@ fn resolve_log_dir(config: &LoggingConfig) -> PathBuf {
 ///
 /// Produces lines like:
 /// ```text
-/// 2026-01-06T15:23:41.512Z INFO grars::view (view.rs:92) – Rendered main window
+/// 2026-01-06T15:23:41.512Z INFO insight_reader::view (view.rs:92) – Rendered main window
 /// ```
 struct HumanFormatter;
 
@@ -201,7 +201,7 @@ pub fn init_logging(config: &LoggingConfig) -> Result<(), LogInitError> {
         (true, true) => {
             let log_dir = resolve_log_dir(config);
             std::fs::create_dir_all(&log_dir).map_err(LogInitError::DirectoryCreation)?;
-            let file_appender = RollingFileAppender::new(Rotation::DAILY, &log_dir, "grars.log");
+            let file_appender = RollingFileAppender::new(Rotation::DAILY, &log_dir, "insight-reader.log");
             let file_layer = tracing_subscriber::fmt::layer()
                 .event_format(HumanFormatter)
                 .with_writer(file_appender)
@@ -222,7 +222,7 @@ pub fn init_logging(config: &LoggingConfig) -> Result<(), LogInitError> {
         (false, true) => {
             let log_dir = resolve_log_dir(config);
             std::fs::create_dir_all(&log_dir).map_err(LogInitError::DirectoryCreation)?;
-            let file_appender = RollingFileAppender::new(Rotation::DAILY, &log_dir, "grars.log");
+            let file_appender = RollingFileAppender::new(Rotation::DAILY, &log_dir, "insight-reader.log");
             let file_layer = tracing_subscriber::fmt::layer()
                 .event_format(HumanFormatter)
                 .with_writer(file_appender)

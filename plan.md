@@ -1,4 +1,4 @@
-# grars Implementation Plan
+# insight-reader Implementation Plan
 
 Rewriting the original Python GTK4 TTS app in Rust with Iced.
 
@@ -101,7 +101,7 @@ src/
 ### 3.1 Create config module
 - [x] Create `src/config.rs`
 - [x] Define config structure (RawConfig with serde)
-- [x] Implement load/save to `~/.config/grars/config.json`
+- [x] Implement load/save to `~/.config/insight-reader/config.json`
 - [x] Add serde dependency
 
 ### 3.2 Add settings menu
@@ -137,9 +137,9 @@ src/
 
 ### 5.2 CLI interface
 - [ ] Add clap for argument parsing
-- [ ] `grars speak-selection`
-- [ ] `grars speak "text"`
-- [ ] `grars --help`
+- [ ] `insight-reader speak-selection`
+- [ ] `insight-reader speak "text"`
+- [ ] `insight-reader --help`
 
 ---
 

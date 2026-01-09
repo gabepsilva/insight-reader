@@ -1,7 +1,7 @@
 //! Persistent configuration handling for Insight Reader.
 //!
 //! Persists the selected voice provider and log level in a simple JSON file:
-//! `~/.config/grars/config.json` with fields like:
+//! `~/.config/insight-reader/config.json` with fields like:
 //! `{ "voice_provider": "piper", "log_level": "INFO" }`.
 
 use std::fs;
@@ -13,7 +13,7 @@ use tracing::{debug, error, warn};
 
 use crate::model::{LogLevel, TTSBackend};
 
-const APP_CONFIG_DIR_NAME: &str = "grars";
+const APP_CONFIG_DIR_NAME: &str = "insight-reader";
 const CONFIG_FILE_NAME: &str = "config.json";
 
 #[derive(Debug)]
