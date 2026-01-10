@@ -3,7 +3,7 @@
 use iced::widget::{button, checkbox, column, container, mouse_area, progress_bar, radio, row, scrollable, svg, text, Space};
 use iced::{Alignment, Background, Color, Element, Length};
 
-use crate::model::{App, LogLevel, Message, PlaybackState, TTSBackend};
+use crate::model::{App, LanguageInfo, LogLevel, Message, PlaybackState, TTSBackend};
 use crate::styles::{
     circle_button_style, close_button_style, error_container_style, header_style,
     modal_content_style, section_style, transparent_button_style, wave_bar_style,
@@ -13,6 +13,17 @@ use crate::styles::{
 const MIN_HEIGHT: f32 = 4.0;
 const MAX_HEIGHT: f32 = 24.0;
 const NUM_BARS: usize = 10;
+
+/// Convert AWS Polly engine string to display name
+fn engine_display_name(engine: &str) -> &str {
+    match engine {
+        "Standard" => "Standard",
+        "Neural" => "Neural",
+        "Generative" => "Generative",
+        "LongForm" => "Long-Form",
+        _ => engine,
+    }
+}
 
 /// Get flag emoji for a language code
 fn get_flag_emoji(lang_code: &str) -> &'static str {
@@ -306,13 +317,35 @@ pub fn settings_window_view<'a>(app: &'a App) -> Element<'a, Message> {
         )
         .style(white_radio_style),
         Space::new().height(Length::Fixed(6.0)),
-        radio(
-            "AWS Polly (Cloud, BYO credentials)",
-            TTSBackend::AwsPolly,
-            Some(app.selected_backend),
-            Message::ProviderSelected
-        )
-        .style(white_radio_style),
+        row![
+            radio(
+                "AWS Polly (Cloud, BYO credentials)",
+                TTSBackend::AwsPolly,
+                Some(app.selected_backend),
+                Message::ProviderSelected
+            )
+            .style(white_radio_style),
+            Space::new().width(Length::Fixed(8.0)),
+            // Info icon button (circled i)
+            button(
+                container(
+                    white_text("ⓘ", 16)
+                        .style(|_theme| iced::widget::text::Style {
+                            color: Some(Color::from_rgb(0.3, 0.6, 1.0)),
+                        })
+                )
+                .width(Length::Fixed(24.0))
+                .height(Length::Fixed(24.0))
+                .center_x(Length::Fixed(24.0))
+                .center_y(Length::Fixed(24.0))
+            )
+            .style(transparent_button_style)
+            .width(Length::Fixed(24.0))
+            .height(Length::Fixed(24.0))
+            .on_press(Message::OpenPollyInfo),
+        ]
+        .align_y(Alignment::Center)
+        .spacing(0),
     ]
     .spacing(0);
 
@@ -438,6 +471,134 @@ pub fn settings_window_view<'a>(app: &'a App) -> Element<'a, Message> {
         column![].spacing(0).into()
     };
 
+    // AWS Polly Voice section (only shown when AWS Polly is selected and voices are loaded)
+    let polly_voice_section: Element<'a, Message> = if app.selected_backend == TTSBackend::AwsPolly {
+        use crate::voices::aws;
+        
+        // Only show if voices are loaded (which means credentials are configured)
+        if let Some(ref voices) = app.polly_voices {
+            // Current voice display
+            let current_voice_display = if let Some(ref voice_key) = app.selected_polly_voice {
+                // Parse voice key to show friendly name
+                let display_text = if let Some((voice_id, engine_str)) = voice_key.split_once(':') {
+                    let engine_display = engine_display_name(engine_str);
+                    // Try to get voice name from loaded voices
+                    if let Some(voice_info) = voices.get(voice_key) {
+                        format!("AWS Polly voice selected: {} ({}, {})", voice_info.name, voice_info.gender, engine_display)
+                    } else {
+                        format!("AWS Polly voice selected: {} ({})", voice_id, engine_display)
+                    }
+                } else {
+                    // Fallback for old format (just voice ID)
+                    format!("AWS Polly voice selected: {}", voice_key)
+                };
+                text(display_text)
+                    .size(14)
+                    .style(|_theme| iced::widget::text::Style {
+                        color: Some(Color::from_rgba(1.0, 1.0, 1.0, 0.7)),
+                    })
+            } else {
+                text("No voice selected")
+                    .size(14)
+                    .style(|_theme| iced::widget::text::Style {
+                        color: Some(Color::from_rgba(1.0, 1.0, 1.0, 0.7)),
+                    })
+            };
+            
+            // Get available languages from AWS voices - create controls inline to avoid lifetime issues
+            let languages = aws::get_available_languages(voices);
+            
+            // Create grid layout: 4 columns
+            const COLS: usize = 4;
+            let mut grid_rows = column![].spacing(6);
+            let mut current_row = row![].spacing(8);
+            let mut col_count = 0;
+            
+            // Show all languages in a grid
+            for (lang_code, lang_info) in languages.iter() {
+                let flag_emoji = get_flag_emoji(lang_code);
+                let label = format!("{} {} ({})", flag_emoji, lang_info.name_english, lang_code);
+                let lang_code_clone = lang_code.clone();
+                let is_selected = app.selected_language.as_ref().map(|s| s == lang_code).unwrap_or(false);
+                
+                // Create button with owned string - clicking opens voice selection immediately
+                let lang_button = button(
+                    container(
+                        text(label).size(13)
+                            .style(move |_theme| iced::widget::text::Style {
+                                color: Some(if is_selected {
+                                    Color::WHITE
+                                } else {
+                                    Color::from_rgba(1.0, 1.0, 1.0, 0.7)
+                                }),
+                            })
+                    )
+                    .padding([5.0, 8.0])
+                    .width(Length::Fill)
+                )
+                .style(transparent_button_style)
+                .width(Length::Fill)
+                .on_press(Message::OpenVoiceSelection(lang_code_clone));
+                
+                current_row = current_row.push(
+                    container(lang_button)
+                        .width(Length::Fill)
+                );
+                col_count += 1;
+                
+                // Start new row when we reach column limit
+                if col_count >= COLS {
+                    grid_rows = grid_rows.push(current_row);
+                    current_row = row![].spacing(8);
+                    col_count = 0;
+                }
+            }
+            
+            // Add remaining items in the last row
+            if col_count > 0 {
+                // Fill remaining columns with empty space
+                while col_count < COLS {
+                    current_row = current_row.push(
+                        container(Space::new().width(Length::Fill).height(Length::Fixed(1.0)))
+                            .width(Length::Fill)
+                    );
+                    col_count += 1;
+                }
+                grid_rows = grid_rows.push(current_row);
+            }
+            
+            let language_controls: Element<'a, Message> = scrollable(grid_rows)
+                .height(Length::Fixed(300.0))
+                .into();
+            
+            container(
+                container(
+                    column![
+                        // Current voice display
+                        container(current_voice_display)
+                            .width(Length::Fill)
+                            .align_x(Alignment::Start)
+                            .padding([12.0, 16.0]),
+                        // Language grid below
+                        container(language_controls)
+                            .width(Length::Fill)
+                            .padding([0.0, 16.0]),
+                    ]
+                    .spacing(0)
+                )
+                .style(section_style)
+            )
+            .padding([16, 16]) // Extra top padding to show it's part of the provider section
+            .width(Length::Fill)
+            .into()
+        } else {
+            // No voices loaded - don't show anything
+            column![].spacing(0).into()
+        }
+    } else {
+        column![].spacing(0).into()
+    };
+
     let provider_section = container(
         column![
             row![
@@ -451,7 +612,7 @@ pub fn settings_window_view<'a>(app: &'a App) -> Element<'a, Message> {
                 .align_x(Alignment::Start),
                 Space::new().width(Length::Fixed(16.0)),
                 container(provider_controls)
-                    .width(Length::Fill)
+                    .width(Length::Shrink)
                     .align_x(Alignment::Start),
             ]
             .align_y(Alignment::Center)
@@ -459,6 +620,7 @@ pub fn settings_window_view<'a>(app: &'a App) -> Element<'a, Message> {
             .padding([12.0, 16.0]),
             error_display,
             piper_voice_section,
+            polly_voice_section,
         ]
         .spacing(8)
     )
@@ -704,30 +866,32 @@ pub fn voice_selection_window_view<'a>(app: &'a App) -> Element<'a, Message> {
     .style(close_button_style)
     .on_press(Message::CloseVoiceSelection);
 
-    use crate::voices;
-    
-    // Get voices for selected language
-    let voice_list: Element<'a, Message> = if let (Some(ref voices), Some(ref lang_code)) = (app.voices.as_ref(), app.selected_language.as_ref()) {
-        let language_voices = voices::get_voices_for_language(voices, lang_code);
-        
-        if language_voices.is_empty() {
-            column![
-                white_text("No voices available for this language", 12)
-                    .style(|_theme| iced::widget::text::Style {
-                        color: Some(Color::from_rgba(1.0, 1.0, 1.0, 0.6)),
-                    }),
-            ]
-            .spacing(0)
-            .into()
-        } else {
-            let mut controls = column![].spacing(8);
-            
-            for voice in language_voices {
-                let voice_key = voice.key.clone();
-                let voice_name = format!("{} ({})", voice.name, voice.quality);
-                let is_selected = app.selected_voice.as_ref().map(|s| s.as_str() == voice_key.as_str()).unwrap_or(false);
-                let is_downloaded = crate::voices::download::is_voice_downloaded(&voice_key);
-                let is_downloading = app.downloading_voice.as_ref().map(|s| s == &voice_key).unwrap_or(false);
+    // Get voices for selected language (Piper or AWS)
+    let voice_list: Element<'a, Message> = if let Some(ref lang_code) = app.selected_language.as_ref() {
+        if app.selected_backend == TTSBackend::Piper {
+            // Piper voices
+            use crate::voices;
+            if let Some(ref voices) = app.voices.as_ref() {
+                let language_voices = voices::get_voices_for_language(voices, lang_code);
+                
+                if language_voices.is_empty() {
+                    column![
+                        white_text("No voices available for this language", 12)
+                            .style(|_theme| iced::widget::text::Style {
+                                color: Some(Color::from_rgba(1.0, 1.0, 1.0, 0.6)),
+                            }),
+                    ]
+                    .spacing(0)
+                    .into()
+                } else {
+                    let mut controls = column![].spacing(8);
+                    
+                    for voice in language_voices {
+                        let voice_key = voice.key.clone();
+                        let voice_name = format!("{} ({})", voice.name, voice.quality);
+                        let is_selected = app.selected_voice.as_ref().map(|s| s.as_str() == voice_key.as_str()).unwrap_or(false);
+                        let is_downloaded = crate::voices::download::is_voice_downloaded(&voice_key);
+                        let is_downloading = app.downloading_voice.as_ref().map(|s| s == &voice_key).unwrap_or(false);
                 
                 // Voice row: checkbox + name + quality + download/select button
                 let voice_key_clone = voice_key.clone();
@@ -793,10 +957,106 @@ pub fn voice_selection_window_view<'a>(app: &'a App) -> Element<'a, Message> {
                     .spacing(8)
                 };
                 
-                controls = controls.push(voice_row);
+                        controls = controls.push(voice_row);
+                    }
+                    
+                    scrollable(controls).into()
+                }
+            } else {
+                column![
+                    white_text("Voices not loaded", 12)
+                        .style(|_theme| iced::widget::text::Style {
+                            color: Some(Color::from_rgba(1.0, 1.0, 1.0, 0.6)),
+                        }),
+                ]
+                .spacing(0)
+                .into()
             }
+        } else if app.selected_backend == TTSBackend::AwsPolly {
+            // AWS Polly voices - only show if voices are loaded
+            use crate::voices::aws;
             
-            scrollable(controls).into()
+            if let Some(ref voices) = app.polly_voices.as_ref() {
+                let language_voices = aws::get_voices_for_language(voices, lang_code);
+                
+                if language_voices.is_empty() {
+                    column![
+                        white_text("No voices available for this language", 12)
+                            .style(|_theme| iced::widget::text::Style {
+                                color: Some(Color::from_rgba(1.0, 1.0, 1.0, 0.6)),
+                            }),
+                    ]
+                    .spacing(0)
+                    .into()
+                } else {
+                    // Sort voices alphabetically by name, then by engine type
+                    let mut sorted_voices: Vec<_> = language_voices.iter().collect();
+                    sorted_voices.sort_by(|a, b| {
+                        // First sort by voice name
+                        let name_cmp = a.name.cmp(&b.name);
+                        if name_cmp != std::cmp::Ordering::Equal {
+                            return name_cmp;
+                        }
+                        // Then by engine type (Standard, Neural, Generative, LongForm)
+                        let engine_order = |e: &str| match e {
+                            "Standard" => 0,
+                            "Neural" => 1,
+                            "Generative" => 2,
+                            "LongForm" => 3,
+                            _ => 4,
+                        };
+                        engine_order(&a.engine).cmp(&engine_order(&b.engine))
+                    });
+                    
+                    let mut controls = column![].spacing(8);
+                    
+                    for voice in sorted_voices {
+                        // Use format "VoiceId:Engine" as the key to distinguish engine variants
+                        let voice_key = format!("{}:{}", voice.id, voice.engine);
+                        let engine_display = engine_display_name(&voice.engine);
+                        let voice_name = format!("{} ({}, {})", voice.name, voice.gender, engine_display);
+                        let is_selected = app.selected_polly_voice.as_ref().map(|s| s.as_str() == voice_key.as_str()).unwrap_or(false);
+                        
+                        // AWS voices are always available (no download needed)
+                        let voice_key_clone = voice_key.clone();
+                        let voice_row = row![
+                            checkbox(is_selected)
+                                .label(voice_name.clone())
+                                .on_toggle(move |checked| {
+                                    if checked {
+                                        Message::VoiceSelected(voice_key_clone.clone())
+                                    } else {
+                                        Message::CloseVoiceSelection // Deselect
+                                    }
+                                })
+                                .style(white_checkbox_style),
+                            Space::new().width(Length::Fixed(8.0)),
+                            button(white_text("Select", 11))
+                                .style(transparent_button_style)
+                                .padding([4.0, 8.0])
+                                .on_press(Message::VoiceSelected(voice_key.clone())),
+                        ]
+                        .align_y(Alignment::Center)
+                        .spacing(8);
+                        
+                        controls = controls.push(voice_row);
+                    }
+                    
+                    scrollable(controls).into()
+                }
+            } else {
+                // No voices loaded - don't show anything
+                column![].spacing(0).into()
+            }
+        } else {
+            column![
+                white_text("No backend selected", 12)
+                    .style(|_theme| iced::widget::text::Style {
+                        color: Some(Color::from_rgba(1.0, 1.0, 1.0, 0.6)),
+                    }),
+            ]
+            .spacing(0)
+            .into()
         }
     } else {
         column![
@@ -810,12 +1070,25 @@ pub fn voice_selection_window_view<'a>(app: &'a App) -> Element<'a, Message> {
     };
 
     // Get language name for header (outside the voice_list scope)
-    let language_name: String = if let (Some(ref voices), Some(ref lang_code)) = (app.voices.as_ref(), app.selected_language.as_ref()) {
+    let language_name: String = if let Some(ref lang_code) = app.selected_language.as_ref() {
         let flag_emoji = get_flag_emoji(lang_code);
-        if let Some((_, lang_info)) = voices::get_available_languages(voices)
-            .iter()
-            .find(|(code, _)| code.as_str() == lang_code.as_str())
-        {
+        
+        let lang_info: Option<LanguageInfo> = match app.selected_backend {
+            TTSBackend::Piper => app.voices.as_ref().and_then(|v| {
+                use crate::voices;
+                voices::get_available_languages(v)
+                    .into_iter()
+                    .find(|(code, _)| code.as_str() == lang_code.as_str())
+                    .map(|(_, info)| info)
+            }),
+            TTSBackend::AwsPolly => app.polly_voices.as_ref().and_then(|v| {
+                v.values()
+                    .find(|voice| voice.language.code.as_str() == lang_code.as_str())
+                    .map(|voice| voice.language.clone())
+            }),
+        };
+        
+        if let Some(lang_info) = lang_info {
             format!("{} {} ({})", flag_emoji, lang_info.name_english, lang_code)
         } else {
             format!("{} {}", flag_emoji, lang_code)
@@ -852,6 +1125,108 @@ pub fn voice_selection_window_view<'a>(app: &'a App) -> Element<'a, Message> {
                             .padding([20.0, 24.0]),
                     ]
                     .spacing(0)
+                )
+                .width(Length::Fill)
+                .style(|_theme| container::Style {
+                    background: Some(Background::Color(Color::from_rgb(0.12, 0.12, 0.14))),
+                    ..Default::default()
+                }),
+            )
+            .width(Length::Fill)
+            .height(Length::Fill),
+        ]
+        .spacing(0)
+        .width(Length::Fill)
+        .height(Length::Fill),
+    )
+    .width(Length::Fill)
+    .height(Length::Fill)
+    .center_x(Length::Fill)
+    .center_y(Length::Fill)
+    .style(modal_content_style)
+    .into()
+}
+
+/// AWS Polly pricing information modal window
+pub fn polly_info_window_view<'a>(_app: &'a App) -> Element<'a, Message> {
+    let close_button = button(
+        container(white_text("✕", 18))
+            .width(Length::Fixed(28.0))
+            .height(Length::Fixed(28.0))
+            .center_x(Length::Fixed(28.0))
+            .center_y(Length::Fixed(28.0)),
+    )
+    .style(close_button_style)
+    .on_press(Message::ClosePollyInfo);
+
+    container(
+        column![
+            // Header bar
+            container(
+                row![
+                    white_text("AWS Polly Pricing Information", 20)
+                        .style(|_theme| iced::widget::text::Style {
+                            color: Some(Color::WHITE),
+                        }),
+                    Space::new().width(Length::Fill),
+                    close_button,
+                ]
+                .width(Length::Fill)
+                .align_y(Alignment::Center)
+            )
+            .width(Length::Fill)
+            .padding([20.0, 24.0])
+            .style(header_style),
+            // Content area
+            scrollable(
+                container(
+                    column![
+                        container(
+                            white_text("Important: Please check AWS pricing", 16)
+                                .style(|_theme| iced::widget::text::Style {
+                                    color: Some(Color::WHITE),
+                                })
+                        )
+                        .width(Length::Fill)
+                        .padding([20.0, 24.0]),
+                        container(
+                            white_text(
+                                "AWS Polly charges based on the number of characters processed. \
+                                Standard voices cost $4.00 per 1 million characters, Neural voices cost $16.00 per 1 million characters, \
+                                and Long-Form voices cost $100.00 per 1 million characters. \
+                                Generative voices cost $30.00 per 1 million characters.\n\n\
+                                Free tier includes:\n\
+                                • Standard voices: 5 million characters per month\n\
+                                • Neural voices: 1 million characters per month (first 12 months)\n\
+                                • Long-Form voices: 500 thousand characters per month (first 12 months)\n\
+                                • Generative voices: 100 thousand characters per month (first 12 months)\n\n\
+                                Please review AWS pricing before using this service to understand potential charges.",
+                                13
+                            )
+                            .style(|_theme| iced::widget::text::Style {
+                                color: Some(Color::from_rgba(1.0, 1.0, 1.0, 0.85)),
+                            })
+                        )
+                        .width(Length::Fill)
+                        .padding([0.0, 24.0]),
+                        Space::new().height(Length::Fixed(16.0)),
+                        container(
+                            button(
+                                white_text("View AWS Polly Pricing Details →", 13)
+                                    .style(|_theme| iced::widget::text::Style {
+                                        color: Some(Color::from_rgb(0.3, 0.6, 1.0)),
+                                    })
+                            )
+                            .style(transparent_button_style)
+                            .padding([8.0, 12.0])
+                            .on_press(Message::OpenPollyPricingUrl)
+                        )
+                        .width(Length::Fill)
+                        .padding([0.0, 24.0])
+                        .align_x(Alignment::Start),
+                        Space::new().height(Length::Fixed(20.0)),
+                    ]
+                    .spacing(12)
                 )
                 .width(Length::Fill)
                 .style(|_theme| container::Style {

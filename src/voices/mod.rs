@@ -2,6 +2,7 @@
 //!
 //! Handles fetching and parsing voices.json from Hugging Face's piper-voices repository.
 
+pub mod aws;
 pub mod download;
 
 use std::collections::HashMap;

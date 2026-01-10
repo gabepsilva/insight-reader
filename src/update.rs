@@ -73,6 +73,28 @@ fn clear_loading_state(app: &mut App) {
     app.status_text = None;
 }
 
+/// Open a URL in the default browser (platform-specific).
+fn open_url(url: &str) {
+    #[cfg(target_os = "windows")]
+    {
+        let _ = std::process::Command::new("cmd")
+            .args(&["/c", "start", url])
+            .spawn();
+    }
+    #[cfg(target_os = "macos")]
+    {
+        let _ = std::process::Command::new("open")
+            .arg(url)
+            .spawn();
+    }
+    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+    {
+        let _ = std::process::Command::new("xdg-open")
+            .arg(url)
+            .spawn();
+    }
+}
+
 /// Open the settings window with error display enabled.
 /// Returns the window ID and task mapped to Message::WindowOpened.
 fn open_settings_window() -> (window::Id, Task<Message>) {
@@ -121,7 +143,7 @@ fn process_text_for_tts(
     } else {
         set_loading_state(app, "Synthesizing voice...");
         info!(context, "Initializing TTS directly");
-        initialize_tts_async(app.selected_backend, text, context)
+        initialize_tts_async(app.selected_backend, text, context, app.selected_polly_voice.clone())
     }
 }
 
@@ -132,6 +154,7 @@ fn initialize_tts_async(
     backend: TTSBackend,
     text: String,
     context: &'static str,
+    polly_voice_id: Option<String>,
 ) -> Task<Message> {
     info!(
         context,
@@ -154,7 +177,11 @@ fn initialize_tts_async(
     // Create provider (this is fast and happens on main thread)
     let provider_result = match backend {
         TTSBackend::Piper => PiperTTSProvider::new().map(|p| Box::new(p) as Box<dyn TTSProvider>),
-        TTSBackend::AwsPolly => PollyTTSProvider::new().map(|p| Box::new(p) as Box<dyn TTSProvider>),
+        TTSBackend::AwsPolly => {
+            // Use provided voice ID or fall back to config/default
+            let voice_id = polly_voice_id.or_else(|| config::load_selected_polly_voice());
+            PollyTTSProvider::new(voice_id).map(|p| Box::new(p) as Box<dyn TTSProvider>)
+        }
     }
     .map_err(|e| format!("{}", e));
 
@@ -327,10 +354,21 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                     Ok(()) => {
                         app.error_message = None;
                         info!("AWS credentials found");
+                        // Fetch AWS voices if not already loaded
+                        if app.polly_voices.is_none() {
+                            return Task::perform(
+                                async {
+                                    crate::voices::aws::fetch_polly_voices().await
+                                },
+                                Message::PollyVoicesLoaded,
+                            );
+                        }
                     }
                     Err(e) => {
                         app.error_message = Some(e);
                         warn!("AWS credentials not found when selecting AWS Polly");
+                        // Clear voices if credentials are not available
+                        app.polly_voices = None;
                     }
                 }
             } else {
@@ -383,6 +421,9 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
             if app.voice_selection_window_id == Some(id) {
                 app.voice_selection_window_id = None;
             }
+            if app.polly_info_window_id == Some(id) {
+                app.polly_info_window_id = None;
+            }
             if app.current_window_id == Some(id) {
                 app.current_window_id = None;
             }
@@ -422,7 +463,7 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                     info!(bytes = cleaned_text.len(), "Text cleanup successful, initializing TTS");
                     // Update status to show we're now synthesizing
                     app.status_text = Some("Synthesizing voice...".to_string());
-                    return initialize_tts_async(app.selected_backend, cleaned_text, "TextCleanupResponse");
+                    return initialize_tts_async(app.selected_backend, cleaned_text, "TextCleanupResponse", app.selected_polly_voice.clone());
                 }
                 Err(e) => {
                     error!(error = %e, "Text cleanup API failed");
@@ -485,6 +526,20 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
             }
             Task::none()
         }
+        Message::PollyVoicesLoaded(result) => {
+            match result {
+                Ok(voices) => {
+                    info!(count = voices.len(), "AWS Polly voices loaded successfully");
+                    app.polly_voices = Some(voices);
+                }
+                Err(e) => {
+                    debug!(error = %e, "Failed to load AWS Polly voices (credentials may not be configured)");
+                    // Don't show error for missing credentials - this is expected if user hasn't configured AWS
+                    app.polly_voices = None;
+                }
+            }
+            Task::none()
+        }
         Message::OpenVoiceSelection(lang_code) => {
             // Prevent opening multiple voice selection windows
             if app.voice_selection_window_id.is_some() {
@@ -514,10 +569,51 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                 Task::none()
             }
         }
+        Message::OpenPollyInfo => {
+            // Prevent opening multiple info windows
+            if app.polly_info_window_id.is_some() {
+                debug!("Polly info window already open, ignoring request");
+                return Task::none();
+            }
+            
+            debug!("Opening AWS Polly pricing info window");
+            let (window_id, task) = window::open(window::Settings {
+                size: Size::new(500.0, 400.0),
+                resizable: false,
+                decorations: false,
+                transparent: false,
+                visible: true,
+                position: window::Position::Centered,
+                ..Default::default()
+            });
+            app.polly_info_window_id = Some(window_id);
+            task.map(Message::WindowOpened)
+        }
+        Message::ClosePollyInfo => {
+            if let Some(window_id) = app.polly_info_window_id.take() {
+                window::close(window_id)
+            } else {
+                Task::none()
+            }
+        }
+        Message::OpenPollyPricingUrl => {
+            let url = "https://aws.amazon.com/polly/pricing/";
+            open_url(url);
+            info!("Opening AWS Polly pricing URL in browser");
+            Task::none()
+        }
         Message::VoiceSelected(voice_key) => {
             info!(voice = %voice_key, "Voice selected");
-            app.selected_voice = Some(voice_key.clone());
-            config::save_selected_voice(voice_key);
+            match app.selected_backend {
+                TTSBackend::Piper => {
+                    app.selected_voice = Some(voice_key.clone());
+                    config::save_selected_voice(voice_key);
+                }
+                TTSBackend::AwsPolly => {
+                    app.selected_polly_voice = Some(voice_key.clone());
+                    config::save_selected_polly_voice(voice_key);
+                }
+            }
             // Close voice selection window after selection
             if let Some(window_id) = app.voice_selection_window_id.take() {
                 return window::close(window_id);

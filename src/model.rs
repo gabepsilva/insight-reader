@@ -49,8 +49,12 @@ pub enum Message {
     VoiceDownloadRequested(String), // Voice key to download
     VoiceDownloaded(Result<String, String>), // Download completion (voice key or error)
     VoicesJsonLoaded(Result<HashMap<String, VoiceInfo>, String>), // voices.json loaded
+    PollyVoicesLoaded(Result<HashMap<String, PollyVoiceInfo>, String>), // AWS Polly voices loaded
     OpenVoiceSelection(String), // Open voice selection window for language code
     CloseVoiceSelection, // Close voice selection window
+    OpenPollyInfo, // Open AWS Polly pricing info modal
+    ClosePollyInfo, // Close AWS Polly pricing info modal
+    OpenPollyPricingUrl, // Open AWS Polly pricing URL in browser
 }
 
 /// Voice metadata from piper-voices repository
@@ -67,6 +71,9 @@ pub struct VoiceInfo {
     #[serde(default)]
     pub aliases: Vec<String>,
 }
+
+// Re-export PollyVoiceInfo from voices::aws module
+pub use crate::voices::aws::PollyVoiceInfo;
 
 /// Language information for a voice
 #[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
@@ -112,12 +119,18 @@ pub struct App {
     pub selected_voice: Option<String>,
     /// Selected language code for voice selection (e.g., "en_US")
     pub selected_language: Option<String>,
-    /// All available voices loaded from voices.json
+    /// All available voices loaded from voices.json (Piper)
     pub voices: Option<HashMap<String, VoiceInfo>>,
+    /// All available voices from AWS Polly
+    pub polly_voices: Option<HashMap<String, PollyVoiceInfo>>,
+    /// Selected AWS Polly voice ID (e.g., "Matthew", "Joanna")
+    pub selected_polly_voice: Option<String>,
     /// Voice selection window ID
     pub voice_selection_window_id: Option<window::Id>,
     /// Voice currently being downloaded (if any)
     pub downloading_voice: Option<String>,
+    /// AWS Polly info modal window ID
+    pub polly_info_window_id: Option<window::Id>,
 }
 
 impl Default for App {
@@ -142,8 +155,11 @@ impl Default for App {
             selected_voice: None,
             selected_language: None,
             voices: None,
+            polly_voices: None,
+            selected_polly_voice: None,
             voice_selection_window_id: None,
             downloading_voice: None,
+            polly_info_window_id: None,
         }
     }
 }
@@ -175,8 +191,11 @@ impl App {
             selected_voice,
             selected_language: None,
             voices: None,
+            polly_voices: None,
+            selected_polly_voice: config::load_selected_polly_voice(),
             voice_selection_window_id: None,
             downloading_voice: None,
+            polly_info_window_id: None,
         }
     }
 }

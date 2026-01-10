@@ -23,6 +23,7 @@ pub fn new() -> (App, Task<Message>) {
         decorations: false,
         transparent: true,
         visible: true,
+        level: window::Level::AlwaysOnTop,
         position: window::Position::SpecificWith(|window_size, monitor_size| {
             // Position at bottom-left corner with small margin
             let margin = 20.0;
@@ -55,7 +56,7 @@ pub fn new() -> (App, Task<Message>) {
         Message::SelectedTextFetched,
     );
     
-    // Fetch voices.json asynchronously on startup
+    // Fetch voices.json asynchronously on startup (Piper voices)
     let fetch_voices_task = Task::perform(
         async {
             debug!("Fetching voices.json from Hugging Face");
@@ -64,7 +65,22 @@ pub fn new() -> (App, Task<Message>) {
         Message::VoicesJsonLoaded,
     );
     
-    (app, Task::batch([open_task, fetch_text_task, fetch_voices_task]))
+    // Fetch AWS Polly voices asynchronously on startup (only if AWS credentials are available)
+    let fetch_polly_voices_task = Task::perform(
+        async {
+            // Check credentials first before attempting to fetch
+            if crate::providers::PollyTTSProvider::check_credentials().is_ok() {
+                debug!("Fetching AWS Polly voices");
+                crate::voices::aws::fetch_polly_voices().await
+            } else {
+                debug!("AWS credentials not available, skipping voice fetch");
+                Err("AWS credentials not configured".to_string())
+            }
+        },
+        Message::PollyVoicesLoaded,
+    );
+    
+    (app, Task::batch([open_task, fetch_text_task, fetch_voices_task, fetch_polly_voices_task]))
 }
 
 pub fn title(app: &App, window: window::Id) -> String {
@@ -73,6 +89,8 @@ pub fn title(app: &App, window: window::Id) -> String {
         String::from("Settings")
     } else if app.voice_selection_window_id == Some(window) {
         String::from("Select Voice")
+    } else if app.polly_info_window_id == Some(window) {
+        String::from("AWS Polly Pricing Information")
     } else {
         String::from("Insight Reader")
     }
@@ -91,6 +109,11 @@ pub fn view(app: &App, window: window::Id) -> Element<'_, Message> {
     // Show voice selection window if this is the voice selection window
     if app.voice_selection_window_id == Some(window) {
         return view::voice_selection_window_view(app);
+    }
+    
+    // Show AWS Polly info modal if this is the info modal window
+    if app.polly_info_window_id == Some(window) {
+        return view::polly_info_window_view(app);
     }
     
     view::main_view(app)

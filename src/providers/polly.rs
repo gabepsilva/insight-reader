@@ -2,16 +2,13 @@
 //!
 //! Uses the AWS SDK for Rust to synthesize speech and plays it using rodio.
 
-use std::path::Path;
-
 use aws_config::BehaviorVersion;
 use aws_sdk_polly::types::{Engine, OutputFormat, VoiceId};
 use tracing::{debug, info};
 
 use super::audio_player::AudioPlayer;
 use super::{TTSError, TTSProvider};
-
-const DEFAULT_REGION: &str = "us-east-1";
+use crate::voices::aws;
 
 const CREDENTIALS_ERROR_MSG: &str = "AWS credentials not found. Please configure credentials via:\n  - Environment variables: AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY\n  - Or credentials file: ~/.aws/credentials";
 
@@ -23,13 +20,17 @@ pub struct PollyTTSProvider {
     player: AudioPlayer,
     /// Tokio runtime for async AWS calls
     runtime: tokio::runtime::Runtime,
+    /// Selected voice ID (e.g., "Matthew", "Joanna")
+    voice_id: String,
+    /// Selected engine type (e.g., "Standard", "Neural", "Generative", "LongForm")
+    engine: Engine,
 }
 
 impl PollyTTSProvider {
     /// Create a new AWS Polly TTS provider.
     ///
     /// Loads credentials from `~/.aws/credentials` or environment variables.
-    pub fn new() -> Result<Self, TTSError> {
+    pub fn new(voice_id: Option<String>) -> Result<Self, TTSError> {
         info!("Initializing AWS Polly TTS provider");
 
         // Create a tokio runtime for async AWS SDK calls
@@ -39,7 +40,7 @@ impl PollyTTSProvider {
             .map_err(|e| TTSError::ProcessError(format!("Failed to create tokio runtime: {e}")))?;
 
         // Determine region: check ~/.aws/config, env vars, or default to us-east-1
-        let region = Self::detect_region();
+        let region = aws::detect_aws_region();
         debug!(region = %region, "Using AWS region");
 
         // Load AWS config (credentials from ~/.aws/credentials or env vars)
@@ -53,6 +54,30 @@ impl PollyTTSProvider {
         let client = aws_sdk_polly::Client::new(&config);
         debug!("AWS Polly client created");
 
+        // Parse voice_id and engine from the voice key (format: "VoiceId:Engine" or just "VoiceId")
+        let (voice_id_str, engine) = if let Some(voice_key) = voice_id {
+            if let Some((vid, eng_str)) = voice_key.split_once(':') {
+                let engine = match eng_str {
+                    "Standard" => Engine::Standard,
+                    "Neural" => Engine::Neural,
+                    "Generative" => Engine::Generative,
+                    "LongForm" => Engine::LongForm,
+                    _ => {
+                        debug!(engine = %eng_str, "Unknown engine type, defaulting to Neural");
+                        Engine::Neural
+                    }
+                };
+                (vid.to_string(), engine)
+            } else {
+                // No engine specified, default to Neural
+                (voice_key, Engine::Neural)
+            }
+        } else {
+            ("Matthew".to_string(), Engine::Neural)
+        };
+
+        debug!(voice_id = %voice_id_str, engine = ?engine, "Using voice and engine");
+
         // Polly neural voices use 16kHz sample rate
         let player = AudioPlayer::new(16000)?;
 
@@ -60,93 +85,11 @@ impl PollyTTSProvider {
             client,
             player,
             runtime,
+            voice_id: voice_id_str,
+            engine,
         })
     }
 
-    /// Detect AWS region from environment or config file.
-    ///
-    /// Priority:
-    /// 1. AWS_REGION or AWS_DEFAULT_REGION environment variables
-    /// 2. ~/.aws/config file (default profile)
-    /// 3. Falls back to us-east-1
-    fn detect_region() -> String {
-        // Check environment variables first
-        if let Ok(region) = std::env::var("AWS_REGION") {
-            if !region.is_empty() {
-                return region;
-            }
-        }
-        if let Ok(region) = std::env::var("AWS_DEFAULT_REGION") {
-            if !region.is_empty() {
-                return region;
-            }
-        }
-
-        // Check ~/.aws/config file
-        if let Some(home) = dirs::home_dir() {
-            let config_path = home.join(".aws").join("config");
-            if let Some(region) = Self::read_region_from_config(&config_path) {
-                return region;
-            }
-        }
-
-        // Default to us-east-1
-        DEFAULT_REGION.to_string()
-    }
-
-    /// Read region from AWS config file.
-    fn read_region_from_config(path: &Path) -> Option<String> {
-        let content = std::fs::read_to_string(path).ok()?;
-        let profile = std::env::var("AWS_PROFILE").unwrap_or_else(|_| "default".to_string());
-
-        // Look for [default] or [profile <name>] section
-        let section_header = if profile == "default" {
-            "[default]"
-        } else {
-            // For non-default profiles, AWS config uses [profile <name>]
-            return Self::read_region_from_profile_section(&content, &profile);
-        };
-
-        let mut in_section = false;
-        for line in content.lines() {
-            let line = line.trim();
-            if line.starts_with('[') {
-                in_section = line.eq_ignore_ascii_case(section_header);
-                continue;
-            }
-            if in_section && line.starts_with("region") {
-                if let Some(value) = line.split('=').nth(1) {
-                    let region = value.trim();
-                    if !region.is_empty() {
-                        return Some(region.to_string());
-                    }
-                }
-            }
-        }
-        None
-    }
-
-    /// Read region from a named profile section.
-    fn read_region_from_profile_section(content: &str, profile: &str) -> Option<String> {
-        let section_header = format!("[profile {}]", profile);
-        let mut in_section = false;
-        for line in content.lines() {
-            let line = line.trim();
-            if line.starts_with('[') {
-                in_section = line.eq_ignore_ascii_case(&section_header);
-                continue;
-            }
-            if in_section && line.starts_with("region") {
-                if let Some(value) = line.split('=').nth(1) {
-                    let region = value.trim();
-                    if !region.is_empty() {
-                        return Some(region.to_string());
-                    }
-                }
-            }
-        }
-        None
-    }
 
     /// Check if AWS credentials are available.
     ///
@@ -227,8 +170,8 @@ impl TTSProvider for PollyTTSProvider {
                 .synthesize_speech()
                 .text(text)
                 .output_format(OutputFormat::Pcm)
-                .voice_id(VoiceId::Matthew)
-                .engine(Engine::Neural)
+                .voice_id(VoiceId::from(self.voice_id.as_str()))
+                .engine(self.engine.clone())
                 .sample_rate("16000")
                 .send()
                 .await

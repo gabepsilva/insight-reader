@@ -60,6 +60,9 @@ struct RawConfig {
     /// Selected Piper voice key (e.g., "en_US-lessac-medium").
     #[serde(default)]
     selected_voice: Option<String>,
+    /// Selected AWS Polly voice ID (e.g., "Matthew", "Joanna").
+    #[serde(default)]
+    selected_polly_voice: Option<String>,
 }
 
 fn config_path() -> Option<PathBuf> {
@@ -101,6 +104,7 @@ fn save_raw_config(mut cfg: RawConfig) -> Result<(), ConfigError> {
 
     ensure_config_dir_exists(&path)?;
     // Normalize by dropping empty strings if present.
+    cfg.selected_polly_voice = cfg.selected_polly_voice.filter(|s| !s.is_empty());
     cfg.voice_provider = cfg.voice_provider.filter(|s| !s.is_empty());
     cfg.log_level = cfg.log_level.filter(|s| !s.is_empty());
     cfg.selected_voice = cfg.selected_voice.filter(|s| !s.is_empty());
@@ -256,6 +260,29 @@ pub fn save_selected_voice(voice_key: String) {
     debug!(voice_key = %voice_key, "Saving selected voice");
     let mut cfg = load_or_default_config();
     cfg.selected_voice = Some(voice_key);
+    if let Err(err) = save_raw_config(cfg) {
+        error!(error = ?err, "Failed to save config");
+    }
+}
+
+/// Load the persisted selected AWS Polly voice, returning None if not set or invalid.
+pub fn load_selected_polly_voice() -> Option<String> {
+    match load_raw_config() {
+        Ok(cfg) => cfg.selected_polly_voice.filter(|s| !s.is_empty()),
+        Err(err) => {
+            warn!(error = ?err, "Failed to load config, no AWS voice selected");
+            None
+        }
+    }
+}
+
+/// Persist the selected AWS Polly voice to disk.
+///
+/// Errors are logged and otherwise ignored.
+pub fn save_selected_polly_voice(voice_id: String) {
+    debug!(voice_id = %voice_id, "Saving selected AWS Polly voice");
+    let mut cfg = load_or_default_config();
+    cfg.selected_polly_voice = Some(voice_id);
     if let Err(err) = save_raw_config(cfg) {
         error!(error = ?err, "Failed to save config");
     }
