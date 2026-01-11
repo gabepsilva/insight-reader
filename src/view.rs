@@ -1,6 +1,6 @@
 //! UI rendering logic
 
-use iced::widget::{button, checkbox, column, container, mouse_area, progress_bar, radio, row, scrollable, svg, text, Space};
+use iced::widget::{button, checkbox, column, container, mouse_area, progress_bar, radio, row, scrollable, svg, text, text_editor, Space};
 use iced::{Alignment, Background, Color, ContentFit, Element, Length};
 
 use crate::model::{App, LanguageInfo, LogLevel, Message, OCRBackend, PlaybackState, TTSBackend};
@@ -207,6 +207,7 @@ const SVG_STOP: &[u8] = include_bytes!("../assets/icons/stop.svg");
 const SVG_VOLUME: &[u8] = include_bytes!("../assets/icons/volume.svg");
 const SVG_SETTINGS: &[u8] = include_bytes!("../assets/icons/settings.svg");
 const SVG_CAMERA: &[u8] = include_bytes!("../assets/icons/camera.svg");
+const SVG_CLIPBOARD: &[u8] = include_bytes!("../assets/icons/clipboard.svg");
 
 /// Calculate bar height from frequency band amplitude (0.0-1.0).
 fn bar_height(amplitude: f32) -> f32 {
@@ -264,6 +265,10 @@ fn camera_icon(size: f32) -> svg::Svg<'static> {
     icon_from_bytes(SVG_CAMERA, size)
 }
 
+fn clipboard_icon(size: f32) -> svg::Svg<'static> {
+    icon_from_bytes(SVG_CLIPBOARD, size)
+}
+
 /// Helper to create white text with consistent styling.
 fn white_text(content: &str, size: u32) -> text::Text<'_> {
     text(content)
@@ -282,9 +287,9 @@ fn error_text(content: &str, size: u32) -> text::Text<'_> {
         })
 }
 
-/// Settings window view - floating modal style
-pub fn settings_window_view<'a>(app: &'a App) -> Element<'a, Message> {
-    let close_button = button(
+/// Helper to create a close button for modal windows.
+fn close_button<'a>(msg: Message) -> Element<'a, Message> {
+    button(
         container(white_text("✕", 18))
             .width(Length::Fixed(28.0))
             .height(Length::Fixed(28.0))
@@ -292,7 +297,32 @@ pub fn settings_window_view<'a>(app: &'a App) -> Element<'a, Message> {
             .center_y(Length::Fixed(28.0)),
     )
     .style(close_button_style)
-    .on_press(Message::CloseSettings);
+    .on_press(msg)
+    .into()
+}
+
+/// Helper to create a modal header bar with title and close button.
+fn modal_header<'a>(title: &'a str, close_msg: Message) -> Element<'a, Message> {
+    container(
+        row![
+            white_text(title, 20)
+                .style(|_theme| iced::widget::text::Style {
+                    color: Some(Color::WHITE),
+                }),
+            Space::new().width(Length::Fill),
+            close_button(close_msg),
+        ]
+        .width(Length::Fill)
+        .align_y(Alignment::Center)
+    )
+    .width(Length::Fill)
+    .padding([20.0, 24.0])
+    .style(header_style)
+    .into()
+}
+
+/// Settings window view - floating modal style
+pub fn settings_window_view<'a>(app: &'a App) -> Element<'a, Message> {
 
     // Error message display (if present)
     let error_display: Element<'a, Message> = if let Some(error_msg) = &app.error_message {
@@ -608,7 +638,7 @@ pub fn settings_window_view<'a>(app: &'a App) -> Element<'a, Message> {
         column![
             row![
                 container(
-                    white_text("TTS Provider", 14)
+                    white_text("Text-to-Speech Provider", 14)
                         .style(|_theme| iced::widget::text::Style {
                             color: Some(Color::from_rgba(1.0, 1.0, 1.0, 0.85)),
                         })
@@ -667,10 +697,10 @@ pub fn settings_window_view<'a>(app: &'a App) -> Element<'a, Message> {
     )
     .style(section_style);
 
-    // Text Cleanup section
+    // Natural Reading section
     let text_cleanup_control = row![
         checkbox(app.text_cleanup_enabled)
-            .label("Enable text cleanup (sends text to local API before TTS)")
+            .label("Enable Natural Reading (cloud-powered text enhancement)")
             .on_toggle(Message::TextCleanupToggled)
             .style(white_checkbox_style),
         Space::new().width(Length::Fixed(8.0)),
@@ -698,7 +728,7 @@ pub fn settings_window_view<'a>(app: &'a App) -> Element<'a, Message> {
     let text_cleanup_section = container(
         row![
             container(
-                white_text("Text Cleanup", 14)
+                white_text("Natural Reading", 14)
                     .style(|_theme| iced::widget::text::Style {
                         color: Some(Color::from_rgba(1.0, 1.0, 1.0, 0.85)),
                     })
@@ -788,22 +818,7 @@ pub fn settings_window_view<'a>(app: &'a App) -> Element<'a, Message> {
 
     container(
         column![
-            // Header bar at top (fixed, not scrollable)
-            container(
-                row![
-                    white_text("Settings", 20)
-                        .style(|_theme| iced::widget::text::Style {
-                            color: Some(Color::WHITE),
-                        }),
-                    Space::new().width(Length::Fill),
-                    close_button,
-                ]
-                .width(Length::Fill)
-                .align_y(Alignment::Center)
-            )
-            .width(Length::Fill)
-            .padding([20.0, 24.0])
-            .style(header_style),
+            modal_header("Settings", Message::CloseSettings),
             // Scrollable content area
             scrollable(
                 container(
@@ -897,6 +912,7 @@ pub fn main_view(app: &App) -> Element<'_, Message> {
     .padding([8.0, 16.0]);
 
     // 5. Progress bar OR status text directly under the content row (not under gear)
+    // Progress bar extends from left edge of content_row to right edge of screenshot button
     let (progress_or_status, gap_height): (Element<Message>, f32) = if let Some(status) = &app.status_text {
         // Show status text during loading (pushed up above where progress bar would be)
         let elem = container(
@@ -906,17 +922,18 @@ pub fn main_view(app: &App) -> Element<'_, Message> {
                     color: Some(Color::from_rgba(1.0, 1.0, 1.0, 0.7)),
                 }),
         )
-        .width(Length::Fixed(313.0))
+        .width(Length::Fill)
         .height(Length::Fixed(33.0))
-        .padding([-6.0, 19.0])
+        .padding([-6.0, 16.0])
         .into();
         (elem, -8.0)
     } else {
         // Show progress bar during playback (stays in same position)
+        // Extends from left padding (16.0) to end of screenshot button
         let elem = container(progress_bar(0.0..=1.0, app.progress))
-            .width(Length::Fixed(313.0))
+            .width(Length::Fill)
             .height(Length::Fixed(1.0))
-            .padding([0.0, 19.0])
+            .padding([0.0, 16.0])
             .into();
         (elem, 3.0)
     };
@@ -956,15 +973,6 @@ pub fn main_view(app: &App) -> Element<'_, Message> {
 
 /// Voice selection window view - shows voices for a selected language
 pub fn voice_selection_window_view<'a>(app: &'a App) -> Element<'a, Message> {
-    let close_button = button(
-        container(white_text("✕", 18))
-            .width(Length::Fixed(28.0))
-            .height(Length::Fixed(28.0))
-            .center_x(Length::Fixed(28.0))
-            .center_y(Length::Fixed(28.0)),
-    )
-    .style(close_button_style)
-    .on_press(Message::CloseVoiceSelection);
 
     // Get voices for selected language (Piper or AWS)
     let voice_list: Element<'a, Message> = if let Some(ref lang_code) = app.selected_language.as_ref() {
@@ -1199,7 +1207,6 @@ pub fn voice_selection_window_view<'a>(app: &'a App) -> Element<'a, Message> {
 
     container(
         column![
-            // Header bar
             container(
                 row![
                     text(format!("Select voice in {}", language_name))
@@ -1208,7 +1215,7 @@ pub fn voice_selection_window_view<'a>(app: &'a App) -> Element<'a, Message> {
                             color: Some(Color::WHITE),
                         }),
                     Space::new().width(Length::Fill),
-                    close_button,
+                    close_button(Message::CloseVoiceSelection),
                 ]
                 .width(Length::Fill)
                 .align_y(Alignment::Center)
@@ -1249,34 +1256,9 @@ pub fn voice_selection_window_view<'a>(app: &'a App) -> Element<'a, Message> {
 
 /// AWS Polly pricing information modal window
 pub fn polly_info_window_view<'a>(_app: &'a App) -> Element<'a, Message> {
-    let close_button = button(
-        container(white_text("✕", 18))
-            .width(Length::Fixed(28.0))
-            .height(Length::Fixed(28.0))
-            .center_x(Length::Fixed(28.0))
-            .center_y(Length::Fixed(28.0)),
-    )
-    .style(close_button_style)
-    .on_press(Message::ClosePollyInfo);
-
     container(
         column![
-            // Header bar
-            container(
-                row![
-                    white_text("AWS Polly Pricing Information", 20)
-                        .style(|_theme| iced::widget::text::Style {
-                            color: Some(Color::WHITE),
-                        }),
-                    Space::new().width(Length::Fill),
-                    close_button,
-                ]
-                .width(Length::Fill)
-                .align_y(Alignment::Center)
-            )
-            .width(Length::Fill)
-            .padding([20.0, 24.0])
-            .style(header_style),
+            modal_header("AWS Polly Pricing Information", Message::ClosePollyInfo),
             // Content area
             scrollable(
                 container(
@@ -1349,42 +1331,17 @@ pub fn polly_info_window_view<'a>(_app: &'a App) -> Element<'a, Message> {
     .into()
 }
 
-/// Text Cleanup information modal window
+/// Natural Reading information modal window
 pub fn text_cleanup_info_window_view<'a>(_app: &'a App) -> Element<'a, Message> {
-    let close_button = button(
-        container(white_text("✕", 18))
-            .width(Length::Fixed(28.0))
-            .height(Length::Fixed(28.0))
-            .center_x(Length::Fixed(28.0))
-            .center_y(Length::Fixed(28.0)),
-    )
-    .style(close_button_style)
-    .on_press(Message::CloseTextCleanupInfo);
-
     container(
         column![
-            // Header bar
-            container(
-                row![
-                    white_text("Text Cleanup Information", 20)
-                        .style(|_theme| iced::widget::text::Style {
-                            color: Some(Color::WHITE),
-                        }),
-                    Space::new().width(Length::Fill),
-                    close_button,
-                ]
-                .width(Length::Fill)
-                .align_y(Alignment::Center)
-            )
-            .width(Length::Fill)
-            .padding([20.0, 24.0])
-            .style(header_style),
+            modal_header("Natural Reading", Message::CloseTextCleanupInfo),
             // Content area
             scrollable(
                 container(
                     column![
                         container(
-                            white_text("Text Cleanup", 16)
+                            white_text("Natural Reading", 16)
                                 .style(|_theme| iced::widget::text::Style {
                                     color: Some(Color::WHITE),
                                 })
@@ -1393,9 +1350,15 @@ pub fn text_cleanup_info_window_view<'a>(_app: &'a App) -> Element<'a, Message> 
                         .padding([20.0, 24.0]),
                         container(
                             white_text(
-                    "Insight Reader pre-processes text to remove noise and improve punctuation before sending it to the Text-to-Speech engine.
+                    "Transform raw text into polished, natural-sounding speech with our cloud-powered text enhancement service.
 
-This feature enables the creation of pleasant audio when reading websites, conversations on platforms like Slack, and structured text such as tables.",
+Natural Reading intelligently enhances your text by:
+• Removing noise and formatting artifacts
+• Improving punctuation and sentence structure
+• Optimizing content for natural speech patterns
+• Preserving context and meaning
+
+Perfect for reading websites, chat conversations (Slack, Discord, etc.), structured content like tables, and any text that needs refinement before text-to-speech conversion.",
                                 13
                             )
                             .style(|_theme| iced::widget::text::Style {
@@ -1431,34 +1394,9 @@ This feature enables the creation of pleasant audio when reading websites, conve
 
 /// Better OCR information modal window
 pub fn ocr_info_window_view<'a>(_app: &'a App) -> Element<'a, Message> {
-    let close_button = button(
-        container(white_text("✕", 18))
-            .width(Length::Fixed(28.0))
-            .height(Length::Fixed(28.0))
-            .center_x(Length::Fixed(28.0))
-            .center_y(Length::Fixed(28.0)),
-    )
-    .style(close_button_style)
-    .on_press(Message::CloseOCRInfo);
-
     container(
         column![
-            // Header bar
-            container(
-                row![
-                    white_text("Better OCR Information", 20)
-                        .style(|_theme| iced::widget::text::Style {
-                            color: Some(Color::WHITE),
-                        }),
-                    Space::new().width(Length::Fill),
-                    close_button,
-                ]
-                .width(Length::Fill)
-                .align_y(Alignment::Center)
-            )
-            .width(Length::Fill)
-            .padding([20.0, 24.0])
-            .style(header_style),
+            modal_header("Better OCR Information", Message::CloseOCRInfo),
             // Content area
             scrollable(
                 container(
@@ -1507,17 +1445,121 @@ pub fn ocr_info_window_view<'a>(_app: &'a App) -> Element<'a, Message> {
     .into()
 }
 
+/// Extracted text dialog window - displays extracted text with copy button
+pub fn extracted_text_dialog_view<'a>(app: &'a App) -> Element<'a, Message> {
+
+    // Display the extracted text in an editable text area
+    let text_content: Element<'a, Message> = if let Some(ref editor_content) = app.extracted_text_editor {
+        // Use text_editor widget for multi-line editing
+        container(
+            text_editor(editor_content)
+                .on_action(Message::ExtractedTextEditorAction)
+        )
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .padding(8)
+        .into()
+    } else if app.extracted_text.is_some() {
+        // Fallback: show message if editor not initialized
+        container(
+            white_text("Initializing editor...", 14)
+                .style(|_theme| iced::widget::text::Style {
+                    color: Some(Color::from_rgba(1.0, 1.0, 1.0, 0.6)),
+                })
+        )
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .center_x(Length::Fill)
+        .center_y(Length::Fill)
+        .into()
+    } else {
+        container(
+            white_text("No text available", 14)
+                .style(|_theme| iced::widget::text::Style {
+                    color: Some(Color::from_rgba(1.0, 1.0, 1.0, 0.6)),
+                })
+        )
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .center_x(Length::Fill)
+        .center_y(Length::Fill)
+        .into()
+    };
+
+    // Copy button - with SVG icon and text
+    let copy_button = button(
+        container(
+            row![
+                clipboard_icon(16.0),
+                Space::new().width(Length::Fixed(6.0)),
+                white_text("Copy to Clipboard", 13)
+                    .style(|_theme| iced::widget::text::Style {
+                        color: Some(Color::WHITE),
+                    })
+            ]
+            .align_y(Alignment::Center)
+        )
+        .padding([8.0, 16.0])
+    )
+    .style(transparent_button_style)
+    .on_press(Message::CopyExtractedTextToClipboard);
+
+    // Read button - with SVG icon and text
+    let read_button = button(
+        container(
+            row![
+                play_icon(16.0),
+                Space::new().width(Length::Fixed(6.0)),
+                white_text("Read", 13)
+                    .style(|_theme| iced::widget::text::Style {
+                        color: Some(Color::WHITE),
+                    })
+            ]
+            .align_y(Alignment::Center)
+        )
+        .padding([8.0, 16.0])
+    )
+    .style(transparent_button_style)
+    .on_press(Message::ReadExtractedText);
+
+    container(
+        column![
+            container(
+                row![
+                    white_text("Extracted Text", 20)
+                        .style(|_theme| iced::widget::text::Style {
+                            color: Some(Color::WHITE),
+                        }),
+                    Space::new().width(Length::Fill),
+                    read_button,
+                    Space::new().width(Length::Fixed(4.0)),
+                    copy_button,
+                    Space::new().width(Length::Fixed(16.0)),
+                    close_button(Message::CloseExtractedTextDialog),
+                ]
+                .width(Length::Fill)
+                .align_y(Alignment::Center)
+            )
+            .width(Length::Fill)
+            .padding([20.0, 24.0])
+            .style(header_style),
+            // Text content area (editable text input)
+            text_content,
+        ]
+        .spacing(0)
+        .width(Length::Fill)
+        .height(Length::Fill),
+    )
+    .width(Length::Fill)
+    .height(Length::Fill)
+    .center_x(Length::Fill)
+    .center_y(Length::Fill)
+    .style(modal_content_style)
+    .into()
+}
+
 /// Screenshot viewer window - displays the captured screenshot
 pub fn screenshot_viewer_view<'a>(app: &'a App) -> Element<'a, Message> {
-    let close_button = button(
-        container(white_text("✕", 18))
-            .width(Length::Fixed(28.0))
-            .height(Length::Fixed(28.0))
-            .center_x(Length::Fixed(28.0))
-            .center_y(Length::Fixed(28.0)),
-    )
-    .style(close_button_style)
-    .on_press(Message::CloseScreenshotViewer);
 
     // Display the screenshot image if available
     let image_content: Element<'a, Message> = if let Some(ref screenshot_path) = app.screenshot_path {
@@ -1550,22 +1592,7 @@ pub fn screenshot_viewer_view<'a>(app: &'a App) -> Element<'a, Message> {
 
     container(
         column![
-            // Header bar
-            container(
-                row![
-                    white_text("Screenshot", 20)
-                        .style(|_theme| iced::widget::text::Style {
-                            color: Some(Color::WHITE),
-                        }),
-                    Space::new().width(Length::Fill),
-                    close_button,
-                ]
-                .width(Length::Fill)
-                .align_y(Alignment::Center)
-            )
-            .width(Length::Fill)
-            .padding([20.0, 24.0])
-            .style(header_style),
+            modal_header("Screenshot", Message::CloseScreenshotViewer),
             // Image content area
             container(image_content)
                 .width(Length::Fill)

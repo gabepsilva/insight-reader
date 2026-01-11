@@ -1,6 +1,7 @@
-//! Text cleanup API integration
+//! Natural Reading API integration
 //!
-//! Sends text to a cleanup service before TTS synthesis.
+//! Sends text to a cloud-powered text enhancement service before TTS synthesis.
+//! This service intelligently processes and refines text to improve speech quality.
 
 use pulldown_cmark::{Event, Parser, Tag};
 use tracing::{debug, info, warn};
@@ -70,14 +71,14 @@ struct CleanupResponse {
     cleaned_content: String,
 }
 
-/// Send text to the cleanup API and return the cleaned text.
+/// Send text to the Natural Reading API and return the enhanced text.
 ///
-/// Makes a POST request to `http://localhost:8080/api/content-cleanup` with
-/// format: `{"content": text}`.
-/// Returns the `cleaned_content` field from the JSON response.
+/// Makes a POST request to the cloud service with format: `{"content": text}`.
+/// Returns the `cleaned_content` field from the JSON response, which contains
+/// intelligently processed and refined text optimized for text-to-speech synthesis.
 pub async fn cleanup_text(text: &str) -> Result<String, String> {
-    info!(bytes = text.len(), "Sending text to cleanup API");
-    debug!(text = %text, "Text being sent to cleanup API");
+    info!(bytes = text.len(), "Sending text to Natural Reading service");
+    debug!(text = %text, "Text being sent to Natural Reading service");
 
     let client = reqwest::Client::new();
     let request_body = CleanupRequest { content: text };
@@ -88,20 +89,20 @@ pub async fn cleanup_text(text: &str) -> Result<String, String> {
         .send()
         .await
         .map_err(|e| {
-            warn!(error = %e, "Failed to connect to cleanup API");
-            format!("Failed to connect to cleanup API: {e}")
+            warn!(error = %e, "Failed to connect to Natural Reading service");
+            format!("Failed to connect to Natural Reading service: {e}")
         })?;
 
     if !response.status().is_success() {
         let status = response.status();
         let body = response.text().await.unwrap_or_default();
-        warn!(?status, body = %body, "Cleanup API returned error");
-        return Err(format!("Cleanup API error ({}): {}", status, body));
+        warn!(?status, body = %body, "Natural Reading service returned error");
+        return Err(format!("Natural Reading service error ({}): {}", status, body));
     }
 
     let cleanup_response: CleanupResponse = response.json().await.map_err(|e| {
-        warn!(error = %e, "Failed to parse cleanup API response");
-        format!("Failed to parse cleanup API response: {e}")
+        warn!(error = %e, "Failed to parse Natural Reading service response");
+        format!("Failed to parse Natural Reading service response: {e}")
     })?;
 
     // Log the text before markdown cleanup
@@ -113,7 +114,7 @@ pub async fn cleanup_text(text: &str) -> Result<String, String> {
     info!(
         original_bytes = cleanup_response.cleaned_content.len(),
         plain_bytes = plain_text.len(),
-        "Text cleanup completed, markdown stripped"
+        "Natural Reading completed, markdown stripped"
     );
     debug!(
         original_preview = %cleanup_response.cleaned_content.chars().take(100).collect::<String>(),

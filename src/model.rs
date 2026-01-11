@@ -49,7 +49,7 @@ pub enum Message {
     WindowClosed(window::Id),
     TTSInitialized(Result<(), String>), // Result of async TTS initialization
     SelectedTextFetched(Option<String>), // Result of async text selection fetch
-    TextCleanupResponse(Result<String, String>), // Result of text cleanup API call
+    TextCleanupResponse(Result<String, String>), // Result of Natural Reading API call
     StartDrag, // Begin dragging the window
     VoiceSelected(String), // Voice key selected (e.g., "en_US-lessac-medium")
     VoiceDownloadRequested(String), // Voice key to download
@@ -64,13 +64,18 @@ pub enum Message {
     OCRBackendSelected(OCRBackend), // OCR backend selected
     OpenOCRInfo, // Open Better OCR info modal
     CloseOCRInfo, // Close Better OCR info modal
-    OpenTextCleanupInfo, // Open Text Cleanup info modal
-    CloseTextCleanupInfo, // Close Text Cleanup info modal
+    OpenTextCleanupInfo, // Open Natural Reading info modal
+    CloseTextCleanupInfo, // Close Natural Reading info modal
     ScreenshotRequested, // User clicked screenshot button
     ScreenshotCaptured(Result<String, String>), // Screenshot result (file path or error)
     ScreenshotTextExtracted(Result<String, String>), // Text extracted from screenshot (text or error)
     OpenScreenshotViewer, // Open screenshot viewer window
     CloseScreenshotViewer, // Close screenshot viewer window
+    OpenExtractedTextDialog, // Open extracted text dialog window
+    CloseExtractedTextDialog, // Close extracted text dialog window
+    CopyExtractedTextToClipboard, // Copy extracted text to clipboard
+    ExtractedTextEditorAction(iced::widget::text_editor::Action), // Text editor action (edit, paste, etc.)
+    ReadExtractedText, // Send extracted text to TTS and start reading
 }
 
 /// Voice metadata from piper-voices repository
@@ -155,8 +160,14 @@ pub struct App {
     pub selected_ocr_backend: OCRBackend,
     /// Better OCR info modal window ID
     pub ocr_info_window_id: Option<window::Id>,
-    /// Text Cleanup info modal window ID
+    /// Natural Reading info modal window ID
     pub text_cleanup_info_window_id: Option<window::Id>,
+    /// Extracted text dialog window ID
+    pub extracted_text_dialog_window_id: Option<window::Id>,
+    /// Extracted text to display in dialog (editable)
+    pub extracted_text: Option<String>,
+    /// Text editor content state for the extracted text dialog
+    pub extracted_text_editor: Option<iced::widget::text_editor::Content>,
 }
 
 impl Default for App {
@@ -191,6 +202,9 @@ impl Default for App {
             selected_ocr_backend: OCRBackend::Default,
             ocr_info_window_id: None,
             text_cleanup_info_window_id: None,
+            extracted_text_dialog_window_id: None,
+            extracted_text: None,
+            extracted_text_editor: None,
         }
     }
 }
@@ -233,6 +247,9 @@ impl App {
             selected_ocr_backend,
             ocr_info_window_id: None,
             text_cleanup_info_window_id: None,
+            extracted_text_dialog_window_id: None,
+            extracted_text: None,
+            extracted_text_editor: None,
         }
     }
 }

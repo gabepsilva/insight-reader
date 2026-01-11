@@ -4,7 +4,7 @@ mod clipboard;
 mod text_cleanup;
 mod screenshot;
 
-pub use clipboard::get_selected_text;
+pub use clipboard::{get_selected_text, copy_to_clipboard};
 pub use text_cleanup::cleanup_text;
 pub use screenshot::{capture_region, extract_text_from_image};
 

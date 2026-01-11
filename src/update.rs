@@ -110,6 +110,26 @@ fn open_settings_window() -> (window::Id, Task<Message>) {
     (window_id, task.map(Message::WindowOpened))
 }
 
+/// Helper to open a simple info window (centered, non-resizable).
+/// Returns the window ID and task mapped to Message::WindowOpened.
+fn open_info_window(size: Size) -> (window::Id, Task<Message>) {
+    let (window_id, task) = window::open(window::Settings {
+        size,
+        resizable: false,
+        decorations: false,
+        transparent: false,
+        visible: true,
+        position: window::Position::Centered,
+        ..Default::default()
+    });
+    (window_id, task.map(Message::WindowOpened))
+}
+
+/// Helper to close a window if the window_id is Some.
+fn close_window_if_some(window_id: Option<window::Id>) -> Task<Message> {
+    window_id.map_or_else(Task::none, window::close)
+}
+
 /// Open settings window if not already open, setting error message and modal state.
 /// Returns the task if window was opened, otherwise Task::none().
 fn open_settings_if_needed(app: &mut App, error_msg: String) -> Task<Message> {
@@ -134,8 +154,8 @@ fn process_text_for_tts(
     context: &'static str,
 ) -> Task<Message> {
     if app.text_cleanup_enabled {
-        set_loading_state(app, "Cleaning text...");
-        info!(context, "Text cleanup enabled, sending to API");
+        set_loading_state(app, "Processing content...");
+        info!(context, "Natural Reading enabled, sending to service");
         Task::perform(
             async move { system::cleanup_text(&text).await },
             Message::TextCleanupResponse,
@@ -323,7 +343,6 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
             Task::none()
         }
         Message::Settings => {
-            // Prevent opening multiple settings windows
             if app.settings_window_id.is_some() {
                 debug!("Settings window already open, ignoring request");
                 return Task::none();
@@ -338,11 +357,7 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
         }
         Message::CloseSettings => {
             app.show_settings_modal = false;
-            if let Some(window_id) = app.settings_window_id.take() {
-                window::close(window_id)
-            } else {
-                Task::none()
-            }
+            close_window_if_some(app.settings_window_id.take())
         }
         Message::ProviderSelected(backend) => {
             info!(?backend, "TTS provider selected");
@@ -390,7 +405,7 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
             Task::none()
         }
         Message::TextCleanupToggled(enabled) => {
-            info!(?enabled, "Text cleanup toggled");
+            info!(?enabled, "Natural Reading toggled");
             app.text_cleanup_enabled = enabled;
             // Persist the setting
             config::save_text_cleanup_enabled(enabled);
@@ -433,6 +448,11 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
             if app.text_cleanup_info_window_id == Some(id) {
                 app.text_cleanup_info_window_id = None;
             }
+            if app.extracted_text_dialog_window_id == Some(id) {
+                app.extracted_text_dialog_window_id = None;
+                app.extracted_text = None;
+                app.extracted_text_editor = None;
+            }
             if app.current_window_id == Some(id) {
                 app.current_window_id = None;
             }
@@ -445,37 +465,36 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
         }
         Message::SelectedTextFetched(text) => {
             info!("Selected text fetched asynchronously");
-            if let Some(ref text) = text {
-                info!(bytes = text.len(), preview = %text.chars().take(50).collect::<String>(), "Text selected");
+            if let Some(ref t) = text {
+                info!(bytes = t.len(), preview = %t.chars().take(50).collect::<String>(), "Text selected");
             } else {
                 info!("No text selected - app will wait for text or close");
             }
             
             // Initialize TTS if window is already open, otherwise store for later
-            if app.main_window_id.is_some() {
+            if let Some(window_id) = app.main_window_id {
                 if let Some(text) = text {
                     return process_text_for_tts(app, text, "SelectedTextFetched");
-                } else {
-                    warn!("No text selected - closing window");
-                    return window::latest().and_then(window::close);
                 }
-            } else {
-                // Window not ready yet, store text for WindowOpened handler
-                app.pending_text = text;
-                trace!("Window not ready yet, text stored for later initialization");
+                warn!("No text selected - closing window");
+                return window::close(window_id);
             }
+            
+            // Window not ready yet, store text for WindowOpened handler
+            app.pending_text = text;
+            trace!("Window not ready yet, text stored for later initialization");
             Task::none()
         }
         Message::TextCleanupResponse(result) => {
             match result {
                 Ok(cleaned_text) => {
-                    info!(bytes = cleaned_text.len(), "Text cleanup successful, initializing TTS");
+                    info!(bytes = cleaned_text.len(), "Natural Reading successful, initializing TTS");
                     // Update status to show we're now synthesizing
                     app.status_text = Some("Synthesizing voice...".to_string());
                     return initialize_tts_async(app.selected_backend, cleaned_text, "TextCleanupResponse", app.selected_polly_voice.clone());
                 }
                 Err(e) => {
-                    error!(error = %e, "Text cleanup API failed");
+                    error!(error = %e, "Natural Reading service failed");
                     clear_loading_state(app);
                     return open_settings_if_needed(app, e);
                 }
@@ -550,7 +569,6 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
             Task::none()
         }
         Message::OpenVoiceSelection(lang_code) => {
-            // Prevent opening multiple voice selection windows
             if app.voice_selection_window_id.is_some() {
                 debug!("Voice selection window already open, ignoring request");
                 return Task::none();
@@ -572,38 +590,21 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
             task.map(Message::WindowOpened)
         }
         Message::CloseVoiceSelection => {
-            if let Some(window_id) = app.voice_selection_window_id.take() {
-                window::close(window_id)
-            } else {
-                Task::none()
-            }
+            close_window_if_some(app.voice_selection_window_id.take())
         }
         Message::OpenPollyInfo => {
-            // Prevent opening multiple info windows
             if app.polly_info_window_id.is_some() {
                 debug!("Polly info window already open, ignoring request");
                 return Task::none();
             }
             
             debug!("Opening AWS Polly pricing info window");
-            let (window_id, task) = window::open(window::Settings {
-                size: Size::new(500.0, 400.0),
-                resizable: false,
-                decorations: false,
-                transparent: false,
-                visible: true,
-                position: window::Position::Centered,
-                ..Default::default()
-            });
+            let (window_id, task) = open_info_window(Size::new(500.0, 400.0));
             app.polly_info_window_id = Some(window_id);
-            task.map(Message::WindowOpened)
+            task
         }
         Message::ClosePollyInfo => {
-            if let Some(window_id) = app.polly_info_window_id.take() {
-                window::close(window_id)
-            } else {
-                Task::none()
-            }
+            close_window_if_some(app.polly_info_window_id.take())
         }
         Message::OpenPollyPricingUrl => {
             let url = "https://aws.amazon.com/polly/pricing/";
@@ -623,58 +624,32 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
             Task::none()
         }
         Message::OpenOCRInfo => {
-            // Prevent opening multiple info windows
             if app.ocr_info_window_id.is_some() {
                 debug!("OCR info window already open, ignoring request");
                 return Task::none();
             }
             
             debug!("Opening Better OCR info window");
-            let (window_id, task) = window::open(window::Settings {
-                size: Size::new(500.0, 300.0),
-                resizable: false,
-                decorations: false,
-                transparent: false,
-                visible: true,
-                position: window::Position::Centered,
-                ..Default::default()
-            });
+            let (window_id, task) = open_info_window(Size::new(500.0, 300.0));
             app.ocr_info_window_id = Some(window_id);
-            task.map(Message::WindowOpened)
+            task
         }
         Message::CloseOCRInfo => {
-            if let Some(window_id) = app.ocr_info_window_id.take() {
-                window::close(window_id)
-            } else {
-                Task::none()
-            }
+            close_window_if_some(app.ocr_info_window_id.take())
         }
         Message::OpenTextCleanupInfo => {
-            // Prevent opening multiple info windows
             if app.text_cleanup_info_window_id.is_some() {
-                debug!("Text Cleanup info window already open, ignoring request");
+                debug!("Natural Reading info window already open, ignoring request");
                 return Task::none();
             }
             
-            debug!("Opening Text Cleanup info window");
-            let (window_id, task) = window::open(window::Settings {
-                size: Size::new(500.0, 300.0),
-                resizable: false,
-                decorations: false,
-                transparent: false,
-                visible: true,
-                position: window::Position::Centered,
-                ..Default::default()
-            });
+            debug!("Opening Natural Reading info window");
+            let (window_id, task) = open_info_window(Size::new(500.0, 300.0));
             app.text_cleanup_info_window_id = Some(window_id);
-            task.map(Message::WindowOpened)
+            task
         }
         Message::CloseTextCleanupInfo => {
-            if let Some(window_id) = app.text_cleanup_info_window_id.take() {
-                window::close(window_id)
-            } else {
-                Task::none()
-            }
+            close_window_if_some(app.text_cleanup_info_window_id.take())
         }
         Message::VoiceSelected(voice_key) => {
             info!(voice = %voice_key, "Voice selected");
@@ -688,21 +663,13 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                     config::save_selected_polly_voice(voice_key);
                 }
             }
-            // Close voice selection window after selection
-            if let Some(window_id) = app.voice_selection_window_id.take() {
-                return window::close(window_id);
-            }
-            Task::none()
+            close_window_if_some(app.voice_selection_window_id.take())
         }
         Message::VoiceDownloadRequested(voice_key) => {
             info!(voice = %voice_key, "Voice download requested");
             
-            // Get voice info from loaded voices
-            let voice_info = if let Some(ref voices) = app.voices {
-                voices.get(&voice_key).cloned()
-            } else {
-                None
-            };
+            let voice_info = app.voices.as_ref()
+                .and_then(|voices| voices.get(&voice_key).cloned());
             
             if let Some(voice_info) = voice_info {
                 // Set downloading state
@@ -773,7 +740,7 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                     
                     // Automatically extract text from the screenshot
                     let file_path_clone = file_path.clone();
-                    let extract_task = Task::perform(
+                    Task::perform(
                         async move {
                             debug!("Starting async text extraction from screenshot");
                             // Use spawn_blocking for the blocking shell command
@@ -789,26 +756,7 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                             })
                         },
                         Message::ScreenshotTextExtracted,
-                    );
-                    
-                    // Automatically open the screenshot viewer window
-                    let window_task = if app.screenshot_window_id.is_none() {
-                        let (window_id, task) = window::open(window::Settings {
-                            size: Size::new(800.0, 600.0),
-                            resizable: true,
-                            decorations: true,
-                            transparent: false,
-                            visible: true,
-                            position: window::Position::Centered,
-                            ..Default::default()
-                        });
-                        app.screenshot_window_id = Some(window_id);
-                        task.map(Message::WindowOpened)
-                    } else {
-                        Task::none()
-                    };
-                    
-                    return Task::batch([extract_task, window_task]);
+                    )
                 }
                 Err(e) => {
                     // Don't show error for user cancellation
@@ -818,9 +766,9 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                         error!(error = %e, "Screenshot capture failed");
                         app.error_message = Some(format!("Screenshot failed: {}", e));
                     }
+                    Task::none()
                 }
             }
-            Task::none()
         }
         Message::ScreenshotTextExtracted(result) => {
             match result {
@@ -828,17 +776,27 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                     info!(bytes = extracted_text.len(), "Text extracted from screenshot successfully");
                     info!(
                         text = %extracted_text,
-                        "Extracted text from screenshot (before TTS)"
+                        "Extracted text from screenshot"
                     );
                     app.status_text = Some("Text extracted from image".to_string());
                     
-                    // Process the extracted text for TTS (same flow as selected text)
-                    if app.main_window_id.is_some() {
-                        return process_text_for_tts(app, extracted_text, "ScreenshotTextExtracted");
-                    } else {
-                        // Window not ready yet, store text for WindowOpened handler
-                        app.pending_text = Some(extracted_text);
-                        trace!("Window not ready yet, extracted text stored for later initialization");
+                    // Store extracted text and initialize editor content
+                    app.extracted_text = Some(extracted_text.clone());
+                    app.extracted_text_editor = Some(iced::widget::text_editor::Content::with_text(&extracted_text));
+                    
+                    // Open the extracted text dialog window
+                    if app.extracted_text_dialog_window_id.is_none() {
+                        let (window_id, task) = window::open(window::Settings {
+                            size: Size::new(600.0, 400.0),
+                            resizable: true,
+                            decorations: true,
+                            transparent: false,
+                            visible: true,
+                            position: window::Position::Centered,
+                            ..Default::default()
+                        });
+                        app.extracted_text_dialog_window_id = Some(window_id);
+                        return task.map(Message::WindowOpened);
                     }
                 }
                 Err(e) => {
@@ -855,13 +813,11 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
             Task::none()
         }
         Message::OpenScreenshotViewer => {
-            // Prevent opening multiple screenshot windows
             if app.screenshot_window_id.is_some() {
                 debug!("Screenshot window already open, ignoring request");
                 return Task::none();
             }
             
-            // Only open if we have a screenshot
             if app.screenshot_path.is_none() {
                 debug!("No screenshot available to display");
                 return Task::none();
@@ -881,11 +837,87 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
             task.map(Message::WindowOpened)
         }
         Message::CloseScreenshotViewer => {
-            if let Some(window_id) = app.screenshot_window_id.take() {
-                window::close(window_id)
-            } else {
-                Task::none()
+            close_window_if_some(app.screenshot_window_id.take())
+        }
+        Message::OpenExtractedTextDialog => {
+            if app.extracted_text_dialog_window_id.is_some() {
+                debug!("Extracted text dialog already open, ignoring request");
+                return Task::none();
             }
+            
+            if app.extracted_text.is_none() {
+                debug!("No extracted text available to display");
+                return Task::none();
+            }
+            
+            debug!("Opening extracted text dialog window");
+            let (window_id, task) = window::open(window::Settings {
+                size: Size::new(600.0, 400.0),
+                resizable: true,
+                decorations: true,
+                transparent: false,
+                visible: true,
+                position: window::Position::Centered,
+                ..Default::default()
+            });
+            app.extracted_text_dialog_window_id = Some(window_id);
+            task.map(Message::WindowOpened)
+        }
+        Message::CloseExtractedTextDialog => {
+            app.extracted_text = None;
+            app.extracted_text_editor = None;
+            close_window_if_some(app.extracted_text_dialog_window_id.take())
+        }
+        Message::CopyExtractedTextToClipboard => {
+            let text_to_copy = app.extracted_text_editor.as_ref()
+                .map(|e| e.text())
+                .or_else(|| app.extracted_text.clone());
+            
+            let Some(text_to_copy) = text_to_copy else {
+                warn!("No extracted text available to copy");
+                return Task::none();
+            };
+            
+            match system::copy_to_clipboard(&text_to_copy) {
+                Ok(()) => {
+                    info!(bytes = text_to_copy.len(), "Text copied to clipboard successfully");
+                    app.status_text = Some("Text copied to clipboard".to_string());
+                }
+                Err(e) => {
+                    error!(error = %e, "Failed to copy text to clipboard");
+                    app.error_message = Some(format!("Failed to copy to clipboard: {}", e));
+                }
+            }
+            Task::none()
+        }
+        Message::ExtractedTextEditorAction(action) => {
+            // Apply the action to the editor content
+            if let Some(ref mut editor_content) = app.extracted_text_editor {
+                editor_content.perform(action);
+                // Update the extracted_text string for consistency
+                app.extracted_text = Some(editor_content.text());
+            }
+            Task::none()
+        }
+        Message::ReadExtractedText => {
+            let text_to_read = app.extracted_text_editor.as_ref()
+                .map(|e| e.text())
+                .or_else(|| app.extracted_text.clone());
+            
+            let Some(text_to_read) = text_to_read else {
+                warn!("No extracted text available to read");
+                return Task::none();
+            };
+            
+            if text_to_read.trim().is_empty() {
+                warn!("Extracted text is empty, cannot read");
+                return Task::none();
+            }
+            
+            info!(bytes = text_to_read.len(), "Sending extracted text to TTS");
+            // Don't close the dialog - keep it open so user can edit and read again if needed
+            // Process text for TTS (this will handle Natural Reading if enabled)
+            process_text_for_tts(app, text_to_read, "ReadExtractedText")
         }
     }
 }

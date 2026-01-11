@@ -53,7 +53,7 @@ struct RawConfig {
     #[serde(default)]
     log_level: Option<String>,
 
-    /// Whether text cleanup is enabled (sends text to cleanup API before TTS).
+    /// Whether Natural Reading is enabled (sends text to cloud service before TTS).
     #[serde(default)]
     text_cleanup_enabled: Option<bool>,
 
@@ -224,22 +224,22 @@ pub fn save_log_level(level: LogLevel) {
     }
 }
 
-/// Load the persisted text cleanup enabled setting, defaulting to `false` if not set.
+/// Load the persisted Natural Reading enabled setting, defaulting to `false` if not set.
 pub fn load_text_cleanup_enabled() -> bool {
     match load_raw_config() {
         Ok(cfg) => cfg.text_cleanup_enabled.unwrap_or(false),
         Err(err) => {
-            warn!(error = ?err, "Failed to load config, text cleanup disabled by default");
+            warn!(error = ?err, "Failed to load config, Natural Reading disabled by default");
             false
         }
     }
 }
 
-/// Persist the text cleanup enabled setting to disk.
+/// Persist the Natural Reading enabled setting to disk.
 ///
 /// Errors are logged and otherwise ignored.
 pub fn save_text_cleanup_enabled(enabled: bool) {
-    debug!(?enabled, "Saving text cleanup enabled");
+    debug!(?enabled, "Saving Natural Reading enabled");
     let mut cfg = load_or_default_config();
     cfg.text_cleanup_enabled = Some(enabled);
     if let Err(err) = save_raw_config(cfg) {

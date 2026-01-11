@@ -8,7 +8,8 @@ use tracing::trace;
 
 /// Creates a preview string for logging (first 200 chars).
 fn text_preview(text: &str) -> String {
-    if text.chars().count() > 200 {
+    let char_count = text.chars().count();
+    if char_count > 200 {
         format!("{}...", text.chars().take(200).collect::<String>())
     } else {
         text.to_string()
@@ -122,5 +123,119 @@ fn get_selected_text_macos() -> Option<String> {
     info!(bytes = text.len(), "Successfully retrieved text from clipboard");
     debug!(text = %text_preview(&text), "Captured text content");
     Some(text)
+}
+
+/// Copies text to the clipboard.
+/// - On macOS: Uses pbcopy
+/// - On Linux: Uses wl-copy for Wayland, xclip for X11
+/// - On other platforms: Returns an error
+pub fn copy_to_clipboard(text: &str) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        copy_to_clipboard_macos(text)
+    }
+    
+    #[cfg(target_os = "linux")]
+    {
+        copy_to_clipboard_linux(text)
+    }
+    
+    #[cfg(not(any(target_os = "macos", target_os = "linux")))]
+    {
+        warn!("Platform not supported for clipboard copy");
+        Err("Clipboard copy not supported on this platform".to_string())
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn copy_to_clipboard_macos(text: &str) -> Result<(), String> {
+    use std::process::Command;
+    
+    info!("Copying text to macOS clipboard using pbcopy");
+    
+    let mut cmd = Command::new("pbcopy");
+    cmd.stdin(std::process::Stdio::piped());
+    
+    let mut child = match cmd.spawn() {
+        Ok(child) => child,
+        Err(e) => {
+            warn!(error = %e, "Failed to execute pbcopy command");
+            return Err(format!("Failed to execute pbcopy: {}", e));
+        }
+    };
+    
+    if let Some(mut stdin) = child.stdin.take() {
+        use std::io::Write;
+        if let Err(e) = stdin.write_all(text.as_bytes()) {
+            warn!(error = %e, "Failed to write to pbcopy stdin");
+            return Err(format!("Failed to write to clipboard: {}", e));
+        }
+    }
+    
+    match child.wait() {
+        Ok(status) => {
+            if status.success() {
+                info!(bytes = text.len(), "Successfully copied text to clipboard");
+                Ok(())
+            } else {
+                let error_msg = format!("pbcopy exited with code: {:?}", status.code());
+                warn!(%error_msg, "pbcopy command failed");
+                Err(error_msg)
+            }
+        }
+        Err(e) => {
+            warn!(error = %e, "Failed to wait for pbcopy process");
+            Err(format!("Failed to wait for pbcopy: {}", e))
+        }
+    }
+}
+
+#[cfg(target_os = "linux")]
+fn copy_to_clipboard_linux(text: &str) -> Result<(), String> {
+    use std::io::Write;
+    
+    let try_cmd = |cmd: &str, args: &[&str]| -> Result<(), String> {
+        trace!(cmd, ?args, "Trying clipboard copy command");
+        
+        let mut child = match Command::new(cmd).args(args).stdin(std::process::Stdio::piped()).spawn() {
+            Ok(child) => child,
+            Err(e) => {
+                warn!(cmd, error = %e, "Failed to execute clipboard copy command");
+                return Err(format!("Failed to execute {}: {}", cmd, e));
+            }
+        };
+        
+        if let Some(mut stdin) = child.stdin.take() {
+            if let Err(e) = stdin.write_all(text.as_bytes()) {
+                warn!(cmd, error = %e, "Failed to write to clipboard command stdin");
+                return Err(format!("Failed to write to {}: {}", cmd, e));
+            }
+        }
+        
+        match child.wait() {
+            Ok(status) => {
+                if status.success() {
+                    info!(cmd, bytes = text.len(), "Successfully copied text to clipboard");
+                    Ok(())
+                } else {
+                    let stderr = format!("{} exited with code: {:?}", cmd, status.code());
+                    warn!(cmd, %stderr, "Clipboard copy command failed");
+                    Err(stderr)
+                }
+            }
+            Err(e) => {
+                warn!(cmd, error = %e, "Failed to wait for clipboard copy process");
+                Err(format!("Failed to wait for {}: {}", cmd, e))
+            }
+        }
+    };
+    
+    // Try wl-copy first (Wayland), fallback to xclip (X11)
+    info!("Attempting to copy text to clipboard");
+    try_cmd("wl-copy", &[])
+        .or_else(|_| {
+            debug!("wl-copy failed, trying xclip");
+            try_cmd("xclip", &["-selection", "clipboard"])
+        })
 }
 
