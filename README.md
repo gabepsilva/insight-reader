@@ -2,6 +2,8 @@
 
 A modern, lightweight Text-to-Speech (TTS) application written in Rust with Iced GUI. Reads any selected text on your computer and speaks it aloud with a beautiful floating window interface.
 
+**🚀 Get started in seconds:** `curl -fsSL https://insightreader.xyz/install.sh | bash`
+
 ## Features
 
 - 🎤 **Multiple TTS Providers**
