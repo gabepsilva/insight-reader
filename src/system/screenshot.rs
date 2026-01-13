@@ -284,9 +284,9 @@ fn extract_text_from_image_macos(image_path: &str) -> Result<String, String> {
                 })
         })
         .or_else(|| {
-            Path::new("extract_text_from_image.swift")
+            Path::new("install/extract_text_from_image.swift")
                 .exists()
-                .then(|| Path::new("extract_text_from_image.swift").to_path_buf())
+                .then(|| Path::new("install/extract_text_from_image.swift").to_path_buf())
         })
         .ok_or_else(|| {
             error!("extract_text_from_image.swift script not found");
@@ -404,9 +404,9 @@ fn extract_text_from_image_linux(image_path: &str) -> Result<String, String> {
         })
         .or_else(|| {
             // Check current directory (development)
-            Path::new("extract_text_from_image.py")
+            Path::new("install/extract_text_from_image.py")
                 .exists()
-                .then(|| Path::new("extract_text_from_image.py").to_path_buf())
+                .then(|| Path::new("install/extract_text_from_image.py").to_path_buf())
         })
         .ok_or_else(|| {
             error!("extract_text_from_image.py script not found");

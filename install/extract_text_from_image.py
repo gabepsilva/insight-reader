@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Extract text from an image using EasyOCR.
-Similar to extract_text_from_image.swift for macOS, but uses EasyOCR instead of Vision framework.
+Similar to install/extract_text_from_image.swift for macOS, but uses EasyOCR instead of Vision framework.
 """
 
 import sys

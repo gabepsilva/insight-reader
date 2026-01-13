@@ -1,55 +1,106 @@
-# Insight Reader
++# Insight Reader TTS Engine
 
-A modern, lightweight Text-to-Speech (TTS) application written in Rust with Iced GUI. Reads any selected text on your computer and speaks it aloud with a beautiful floating window interface.
+<div align="center">
+<img src="assets/logo.svg" height="128">
 
-**🚀 Get started in seconds:** `curl -fsSL https://insightreader.xyz/install.sh | bash`
+![macOS](https://img.shields.io/badge/macOS-Compatible-black?style=for-the-badge&logo=apple)
+![Linux](https://img.shields.io/badge/Linux-Compatible-black?style=for-the-badge&logo=linux)
+![Rust](https://img.shields.io/badge/Rust-2021+-orange?style=for-the-badge&logo=rust)
+![Piper](https://img.shields.io/badge/Piper-TTS-green?style=for-the-badge)
+![AWS Polly](https://img.shields.io/badge/AWS-Polly-yellow?style=for-the-badge)
 
-## Features
 
-- 🎤 **Multiple TTS Providers**
-  - **Piper** (local, offline) - Fast, privacy-focused local TTS
-  - **AWS Polly** (cloud) - High-quality neural voices
 
-- 🎨 **Modern UI**
-  - Floating borderless window
-  - Real-time waveform visualization (FFT-driven)
-  - Dynamic progress bar
-  - Play/pause/stop controls
-  - Skip forward/backward (5 seconds)
+*High-quality text-to-speech with beautiful GUI, multiple providers, and cross-platform support*
 
-- ⚙️ **Settings & Configuration**
-  - Provider selection (Piper/Polly)
-  - Log level configuration
-  - Persistent settings (saved to `~/.config/insight-reader/config.json`)
+</div>
 
-- 🔧 **Additional Features**
-  - Automatic clipboard/selection reading at startup
-  - Auto-close window when playback completes
-  - Error handling with user-friendly messages
-  - Comprehensive logging
+## ✨ Features
 
-## Screenshots
+<table>
+<tr>
+<td width="50%">
 
-The application displays a compact floating window with:
-- Volume icon and animated waveform bars
-- Playback controls (-5s, +5s, play/pause, stop)
-- Progress bar
-- Settings gear icon
+**🌍 Multiple TTS Providers**
+- **Piper** (local, offline) - Fast, privacy-focused local TTS with 100+ voices
+- **AWS Polly** (cloud) - High-quality neural voices with multiple engines (Standard, Neural, Generative, LongForm)
 
-## Tested Platforms
+**🎨 Modern GUI**
+- Floating borderless window with drag support
+- Real-time waveform visualization
+- Play/pause/stop controls
+- Skip forward/backward (5 seconds)
 
-This application has been tested on:
-- **Ubuntu** with GNOME (Wayland)
-- **Arch Linux** with Hyprland (Wayland)
-- **macOS** (Apple Silicon and Intel)
+</td>
+<td width="50%">
 
-While it should work on other Linux distributions and window managers, these are the primary tested environments.
+**🎯 System Integration**
+- Works with any application (browser, editor, etc.)
+- Cross-platform support (Linux, macOS)
+- Text cleanup toggle
 
-## Installation
 
-### Quick Install (Recommended)
+**⚡ Lightning Fast**
+- Native Rust performance
+- Streaming audio playback
+- Low latency audio synthesis
 
-Run the installation script directly from GitHub:
+**🔊 High Quality**
+- Super high quality neural audio synthesis
+- Multiple voice engines (Standard, Neural, Generative, LongForm for AWS Polly)
+
+
+</td>
+</tr>
+</table>
+
+## 🚀 Easy installation
+
+```bash
+curl -fsSL https://insightreader.xyz/install.sh | bash
+```
+
+## 📸 Screenshots
+
+<div align="center">
+
+### Main Window
+<img src="assets/screenshots/main.png" alt="Main Window" width="300">
+
+*Floating borderless window with waveform visualization and playback controls*
+
+### Settings Window
+<img src="assets/screenshots/configurations.png" alt="Settings Window" width="600">
+
+*Comprehensive settings with provider selection, voice management, and configuration options*
+
+</div>
+
+## 🗣️ Available Voices & Languages
+
+
+**100+ voices** Offline voices by [rhasspy/piper-voices](https://huggingface.co/rhasspy/piper-voices) repository:
+
+
+- **Low** - Fast, smaller models
+- **Medium** - Balanced quality and speed
+- **High** - Best quality, larger models
+
+Voices can be downloaded directly from the application interface.
+
+**100+ neural voices** across **30+ languages** by AWS Polly:
+
+- **Standard** - Traditional TTS
+- **Neural** - High-quality neural voices
+- **Generative** - Advanced AI-generated voices
+- **LongForm** - Optimized for long-form content
+
+
+### 🚀 Installation
+
+#### Quick Install (Recommended)
+
+Run the installation script directly:
 
 ```bash
 curl -fsSL https://insightreader.xyz/install.sh | bash
@@ -61,48 +112,38 @@ Or using `wget`:
 wget -qO- https://insightreader.xyz/install.sh | bash
 ```
 
-### Manual Installation
+#### Manual Installation
 
-#### Prerequisites
+1. **Prerequisites**:
+   - **Rust** (latest stable version)
+   - **System dependencies**:
+     - `python3` and `python3-venv` (for Piper TTS)
+     - `espeak-ng` (for text processing)
 
-- **Rust** (latest stable version)
-- **System dependencies** (automatically installed by install script):
-  - `python3` and `python3-venv` (for Piper TTS)
-  - `espeak-ng` (for text processing)
-  - **Linux**: No additional dependencies (clipboard handled by `arboard` crate)
-  - **macOS**: No additional dependencies (clipboard handled by `arboard` crate)
-
-#### Build from Source
-
-1. Clone the repository:
+2. **Clone and build**:
    ```bash
    git clone https://github.com/gabepsilva/insight-reader.git
    cd insight-reader
-   ```
-
-2. Build the project:
-   ```bash
    cargo build --release
    ```
 
-3. Install the binary:
+3. **Install the binary**:
    ```bash
    cp target/release/insight-reader ~/.local/bin/
    ```
 
-4. Set up Piper TTS (for local TTS):
+4. **Set up Piper TTS** (for local TTS):
    ```bash
-   # The install.sh script handles this automatically, but manually:
    mkdir -p ~/.local/share/insight-reader/venv
    python3 -m venv ~/.local/share/insight-reader/venv
    source ~/.local/share/insight-reader/venv/bin/activate
    pip install piper-tts
    ```
 
-5. Download a Piper voice model:
+5. **Download a Piper voice model** (optional - can be done from UI):
    ```bash
    mkdir -p ~/.local/share/insight-reader/models
-   # Download a model from https://huggingface.co/rhasspy/piper-voices
+   # Download from https://huggingface.co/rhasspy/piper-voices
    # Example: en_US-lessac-medium
    ```
 
@@ -132,154 +173,115 @@ To use AWS Polly, configure your AWS credentials:
    ```
    Then set: `export AWS_PROFILE=myprofile`
 
-## Usage
+## 🎯 Usage
 
 ### Basic Usage
 
 1. **Select text** in any application (browser, editor, etc.)
 2. **Run Insight Reader**:
-   ```bash
-   insight-reader
-   ```
 3. The application will:
    - Read the selected text automatically
    - Display a floating window
    - Start speaking immediately
 
-### Controls
 
-- **-5s / +5s**: Skip backward/forward by 5 seconds
-- **Play/Pause**: Toggle playback
-- **Stop**: Stop playback and close window
-- **Settings (⚙)**: Open settings window to change provider or log level
+## 🔧 Advanced Usage
 
-### Settings
 
-Click the settings gear icon to:
-- Switch between Piper (local) and AWS Polly (cloud) providers
-- Adjust log level (Error, Warn, Info, Debug, Trace)
-- View error messages if any issues occur
+### Text Cleanup
 
-Settings are automatically saved to `~/.config/insight-reader/config.json`.
+Enable text cleanup in settings to:
+- Remove markdown formatting
+- Clean up special characters
+- Improve TTS quality for formatted text
 
-## Project Structure
+## 🛠️ Troubleshooting
+
+### Common Issues
+
+**"No audio playback"**
+- Check that your system audio is working
+
+**"AWS Polly not working"**
+- Verify AWS credentials are configured (see [AWS Polly Setup](#aws-polly-setup-optional))
+- Check error messages in the settings window
+- Verify AWS credentials have Polly permissions
+
+**"Clipboard not working"**
+- **macOS**: 
+  - Grant accessibility permissions: **System Preferences/Settings → Security & Privacy → Privacy → Accessibility**
+  - Add Insight Reader (or Terminal if running from terminal) to the allowed apps list
+  - Try selecting text before running Insight Reader
+
 
 ```
-src/
-├── main.rs              # Entry point
-├── app.rs               # Iced Application (async-capable)
-├── model.rs             # Domain types + app state
-├── update.rs            # Business logic
-├── view.rs              # UI rendering
-├── styles.rs            # Custom styles
-├── config.rs            # Configuration management
-├── logging.rs           # Logging setup
-├── providers/
-│   ├── mod.rs           # TTSProvider trait
-│   ├── piper.rs         # Piper TTS implementation
-│   ├── polly.rs         # AWS Polly implementation
-│   └── audio_player.rs  # Audio playback engine
-└── system/
-    ├── mod.rs
-    └── clipboard.rs     # Clipboard/selection reading
-```
 
-## Configuration
+## 🗺️ Roadmap
 
-Configuration is stored in `~/.config/insight-reader/config.json`:
+- [x] Multiple TTS providers (Piper, AWS Polly)
+- [x] Beautiful floating GUI with Iced
+- [x] Real-time waveform visualization
+- [x] Voice selection for both providers
+- [x] Voice download from UI
+- [x] Text cleanup support
+- [x] Cross-platform support (Linux, macOS)
+- [x] Settings persistence
+- [ ] Windows support
+- [ ] Read Images
+- [ ] Batch text processing
+- [ ] Audio export functionality
+- [ ] Plugin system for custom providers
 
-```json
-{
-  "voice_provider": "piper",
-  "log_level": "INFO"
-}
-```
+## 🤝 Contributing
 
-Valid values:
-- `voice_provider`: `"piper"` or `"polly"`
-- `log_level`: `"ERROR"`, `"WARN"`, `"INFO"`, `"DEBUG"`, `"TRACE"`
+We welcome contributions! Please feel free to:
+- Report bugs and issues
+- Suggest new features
+- Submit pull requests
+- Add new TTS providers
+- Improve documentation
+- Add new voice packs
+- Design UI/UX improvements
 
-## Logging
+## 📊 Tested Platforms
+
+**Release tested:**
+
+| Platform | Desktop Environment / WM | Status |
+|----------|------------------------|--------|
+| 🐧 **Ubuntu** | 🖥️ GNOME (Wayland) | ✅ Tested |
+| 🐧 **Ubuntu** | 🎨 KDE (Wayland/X11) | ✅ Tested |
+| 🎩 **Fedora** | 🖥️ GNOME (Wayland) | ✅ Tested |
+| 🎩 **Fedora** | 🎨 KDE (Wayland/X11) | ✅ Tested |
+| 🏛️ **Arch Linux** | 🖥️ GNOME (Wayland) | ✅ Tested |
+| 🏛️ **Arch Linux** | 🎨 KDE (Wayland/X11) | ✅ Tested |
+| 🏛️ **Arch Linux** | 🌊 Hyprland (Wayland) | ✅ Tested |
+| 🍎 **macOS** | Apple Silicon (M1/M2/M3) | ✅ Tested |
+| 🍎 **macOS** | Intel | ✅ Tested |
+
+While it should work on other Linux distributions and window managers, these are the primary tested environments.
+
+## 📝 Logging
 
 Logs are written to:
 - **Stderr**: Real-time console output
 - **File**: `~/.local/share/insight-reader/logs/insight-reader-YYYY-MM-DD.log`
 
-Log level can be changed in the settings window.
 
-## Troubleshooting
-
-### No audio playback
-
-- Check that your system audio is working
-- Verify the TTS provider is correctly configured
-- Check logs: `~/.local/share/insight-reader/logs/insight-reader-*.log`
-
-### AWS Polly not working
-
-- Verify AWS credentials are configured (see [AWS Polly Setup](#aws-polly-setup-optional))
-- Check error messages in the settings window
-- Ensure you have internet connectivity
-- Verify AWS credentials have Polly permissions
-
-### Clipboard not working
-
-- **Linux/macOS**: Clipboard support is handled by the `arboard` crate (no external dependencies needed)
-- **macOS**: 
-  - Grant accessibility permissions: **System Preferences/Settings → Security & Privacy → Privacy → Accessibility**
-  - Add Insight Reader (or Terminal if running from terminal) to the allowed apps list
-  - Try selecting text before running Insight Reader
-- Try selecting text before running Insight Reader
-
-### Piper TTS not found
-
-- Ensure Python venv is set up: `~/.local/share/insight-reader/venv`
-- Verify `piper-tts` is installed in the venv
-- Check that a voice model is downloaded to `~/.local/share/insight-reader/models`
-
-## Development
-
-### Building
-
-```bash
-cargo build
-```
-
-### Running
-
-```bash
-cargo run
-```
-
-### Testing
-
-```bash
-cargo test
-```
-
-### Dependencies
-
-Key dependencies:
-- `iced` - GUI framework
-- `rodio` - Audio playback
-- `rustfft` - FFT for waveform visualization
-- `aws-sdk-polly` - AWS Polly integration
-- `tokio` - Async runtime
-- `tracing` - Structured logging
-
-See `Cargo.toml` for the complete list.
-
-## License
-
-[Add your license here]
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## Acknowledgments
+## 🙏 Acknowledgments
 
 - Built with [Iced](https://iced.rs/) GUI framework
 - Uses [Piper TTS](https://github.com/rhasspy/piper) for local TTS
 - AWS Polly integration via AWS SDK for Rust
+- Audio playback powered by [rodio](https://github.com/RustAudio/rodio)
+- Waveform visualization using [rustfft](https://github.com/ejmahler/rustfft)
 
+---
+
+<div align="center">
+
+**Made with ❤️ for the open-source community**
+
+[GitHub](https://github.com/gabepsilva/insight-reader) • [Issues](https://github.com/gabepsilva/insight-reader/issues) • [Releases](https://github.com/gabepsilva/insight-reader/releases)
+
+</div>
