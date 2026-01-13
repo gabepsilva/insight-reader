@@ -69,8 +69,10 @@ pub enum Message {
     ScreenshotRequested, // User clicked screenshot button
     ScreenshotCaptured(Result<String, String>), // Screenshot result (file path or error)
     ScreenshotTextExtracted(Result<String, String>), // Text extracted from screenshot (text or error)
+    #[allow(dead_code)] // Message variant - matched but not directly constructed
     OpenScreenshotViewer, // Open screenshot viewer window
     CloseScreenshotViewer, // Close screenshot viewer window
+    #[allow(dead_code)] // Message variant - matched but not directly constructed
     OpenExtractedTextDialog, // Open extracted text dialog window
     CloseExtractedTextDialog, // Close extracted text dialog window
     CopyExtractedTextToClipboard, // Copy extracted text to clipboard
