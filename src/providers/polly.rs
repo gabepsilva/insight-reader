@@ -60,10 +60,9 @@ impl PollyTTSProvider {
                 let engine = match eng_str {
                     "Standard" => Engine::Standard,
                     "Neural" => Engine::Neural,
-                    "Generative" => Engine::Generative,
-                    "LongForm" => Engine::LongForm,
+                    // Note: Generative and LongForm engines require newer SDK versions
                     _ => {
-                        debug!(engine = %eng_str, "Unknown engine type, defaulting to Neural");
+                        debug!(engine = %eng_str, "Unknown or unsupported engine type, defaulting to Neural");
                         Engine::Neural
                     }
                 };
