@@ -4,9 +4,11 @@
 mod linux;
 #[cfg(target_os = "macos")]
 mod macos;
+#[cfg(target_os = "windows")]
+mod windows;
 
 #[cfg(test)]
-#[cfg(any(target_os = "macos", target_os = "linux"))]
+#[cfg(any(target_os = "macos", target_os = "linux", target_os = "windows"))]
 mod tests;
 
 use tracing::{debug, info, warn};
@@ -38,6 +40,7 @@ pub(crate) fn process_text(text: String, source: &str) -> Option<String> {
 /// Gets the currently selected text.
 /// - On Linux: Uses arboard to read from PRIMARY selection first, falls back to clipboard
 /// - On macOS: Uses arboard to read from clipboard
+/// - On Windows: Uses arboard to read from clipboard
 /// - On other platforms: Returns None
 pub fn get_selected_text() -> Option<String> {
     #[cfg(target_os = "macos")]
@@ -50,7 +53,12 @@ pub fn get_selected_text() -> Option<String> {
         linux::get_selected_text_linux()
     }
     
-    #[cfg(not(any(target_os = "macos", target_os = "linux")))]
+    #[cfg(target_os = "windows")]
+    {
+        windows::get_selected_text_windows()
+    }
+    
+    #[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
     {
         warn!("Platform not supported for text selection");
         None
@@ -60,9 +68,10 @@ pub fn get_selected_text() -> Option<String> {
 /// Copies text to the clipboard.
 /// - On macOS: Uses arboard
 /// - On Linux: Uses arboard
+/// - On Windows: Uses arboard
 /// - On other platforms: Returns an error
 pub fn copy_to_clipboard(text: &str) -> Result<(), String> {
-    #[cfg(any(target_os = "macos", target_os = "linux"))]
+    #[cfg(any(target_os = "macos", target_os = "linux", target_os = "windows"))]
     {
         use arboard::Clipboard;
         
@@ -80,7 +89,7 @@ pub fn copy_to_clipboard(text: &str) -> Result<(), String> {
         Ok(())
     }
     
-    #[cfg(not(any(target_os = "macos", target_os = "linux")))]
+    #[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
     {
         warn!("Platform not supported for clipboard copy");
         Err("Clipboard copy not supported on this platform".to_string())

@@ -3,6 +3,7 @@
 <div align="center">
 <img src="assets/logo.svg" height="128">
 
+![Windows](https://img.shields.io/badge/Windows-Compatible-blue?style=for-the-badge&logo=windows)
 ![macOS](https://img.shields.io/badge/macOS-Compatible-black?style=for-the-badge&logo=apple)
 ![Linux](https://img.shields.io/badge/Linux-Compatible-black?style=for-the-badge&logo=linux)
 ![Rust](https://img.shields.io/badge/Rust-2021+-orange?style=for-the-badge&logo=rust)
@@ -36,7 +37,7 @@
 
 **🎯 System Integration**
 - Works with any application (browser, editor, etc.)
-- Cross-platform support (Linux, macOS)
+- Cross-platform support (Windows, Linux, macOS)
 - Text cleanup toggle
 
 
@@ -100,16 +101,26 @@ Voices can be downloaded directly from the application interface.
 
 #### Quick Install (Recommended)
 
-Run the installation script directly:
-
+**Linux/macOS:**
 ```bash
 curl -fsSL https://insightreader.xyz/install.sh | bash
 ```
 
 Or using `wget`:
-
 ```bash
 wget -qO- https://insightreader.xyz/install.sh | bash
+```
+
+**Windows (PowerShell):**
+```powershell
+# Download and run the installation script
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/gabepsilva/insight-reader/master/install/install-windows.ps1" -OutFile "$env:TEMP\install-windows.ps1"
+& "$env:TEMP\install-windows.ps1"
+```
+
+Or run locally from the project directory:
+```powershell
+.\install\install-windows.ps1
 ```
 
 #### Manual Installation
@@ -118,7 +129,7 @@ wget -qO- https://insightreader.xyz/install.sh | bash
    - **Rust** (latest stable version)
    - **System dependencies**:
      - `python3` and `python3-venv` (for Piper TTS)
-     - `espeak-ng` (for text processing)
+     - `espeak-ng` (for text processing) - Linux/macOS only
 
 2. **Clone and build**:
    ```bash
@@ -128,11 +139,21 @@ wget -qO- https://insightreader.xyz/install.sh | bash
    ```
 
 3. **Install the binary**:
+
+   **Linux/macOS:**
    ```bash
    cp target/release/insight-reader ~/.local/bin/
    ```
 
+   **Windows:**
+   ```powershell
+   New-Item -ItemType Directory -Path "$env:LOCALAPPDATA\insight-reader\bin" -Force
+   Copy-Item "target\release\insight-reader.exe" "$env:LOCALAPPDATA\insight-reader\bin\"
+   ```
+
 4. **Set up Piper TTS** (for local TTS):
+
+   **Linux/macOS:**
    ```bash
    mkdir -p ~/.local/share/insight-reader/venv
    python3 -m venv ~/.local/share/insight-reader/venv
@@ -140,12 +161,22 @@ wget -qO- https://insightreader.xyz/install.sh | bash
    pip install piper-tts
    ```
 
+   **Windows:**
+   ```powershell
+   python -m venv "$env:LOCALAPPDATA\insight-reader\venv"
+   & "$env:LOCALAPPDATA\insight-reader\venv\Scripts\Activate.ps1"
+   pip install piper-tts
+   ```
+
 5. **Download a Piper voice model** (optional - can be done from UI):
    ```bash
-   mkdir -p ~/.local/share/insight-reader/models
    # Download from https://huggingface.co/rhasspy/piper-voices
    # Example: en_US-lessac-medium
    ```
+   
+   Models are stored in:
+   - **Linux/macOS:** `~/.local/share/insight-reader/models/`
+   - **Windows:** `%LOCALAPPDATA%\insight-reader\models\`
 
 #### AWS Polly Setup (Optional)
 
@@ -208,11 +239,24 @@ Enable text cleanup in settings to:
 - Verify AWS credentials have Polly permissions
 
 **"Clipboard not working"**
+- **Windows**:
+  - Ensure the text is copied to clipboard before running Insight Reader
+  - Try copying the text again (Ctrl+C) and then run Insight Reader
 - **macOS**: 
   - Grant accessibility permissions: **System Preferences/Settings → Security & Privacy → Privacy → Accessibility**
   - Add Insight Reader (or Terminal if running from terminal) to the allowed apps list
   - Try selecting text before running Insight Reader
+- **Linux**:
+  - Ensure you have `wl-clipboard` (Wayland) or `xclip`/`xsel` (X11) installed
 
+**"Screenshot capture not working"** (Windows)
+- Screenshot capture uses PowerShell with Windows Forms
+- Ensure PowerShell execution policy allows scripts: `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser`
+- Press Escape to cancel screenshot selection
+
+**"Piper TTS not found"** (Windows)
+- Verify Python venv was created: `%LOCALAPPDATA%\insight-reader\venv\Scripts\piper.exe`
+- Run the installation script again: `.\install\install-windows.ps1 -Force`
 
 ```
 
@@ -224,9 +268,9 @@ Enable text cleanup in settings to:
 - [x] Voice selection for both providers
 - [x] Voice download from UI
 - [x] Text cleanup support
-- [x] Cross-platform support (Linux, macOS)
+- [x] Cross-platform support (Linux, macOS, Windows)
 - [x] Settings persistence
-- [ ] Windows support
+- [x] Windows support
 - [ ] Read Images
 - [ ] Batch text processing
 - [ ] Audio export functionality
@@ -249,6 +293,8 @@ We welcome contributions! Please feel free to:
 
 | Platform | Desktop Environment / WM | Status |
 |----------|------------------------|--------|
+| 🪟 **Windows 11** | Desktop | ✅ Tested |
+| 🪟 **Windows 10** | Desktop | ✅ Tested |
 | 🐧 **Ubuntu** | 🖥️ GNOME (Wayland) | ✅ Tested |
 | 🐧 **Ubuntu** | 🎨 KDE (Wayland/X11) | ✅ Tested |
 | 🎩 **Fedora** | 🖥️ GNOME (Wayland) | ✅ Tested |
@@ -259,13 +305,15 @@ We welcome contributions! Please feel free to:
 | 🍎 **macOS** | Apple Silicon (M1/M2/M3) | ✅ Tested |
 | 🍎 **macOS** | Intel | ✅ Tested |
 
-While it should work on other Linux distributions and window managers, these are the primary tested environments.
+While it should work on other platforms, these are the primary tested environments.
 
 ## 📝 Logging
 
 Logs are written to:
 - **Stderr**: Real-time console output
-- **File**: `~/.local/share/insight-reader/logs/insight-reader-YYYY-MM-DD.log`
+- **File**:
+  - **Linux/macOS**: `~/.local/share/insight-reader/logs/insight-reader-YYYY-MM-DD.log`
+  - **Windows**: `%LOCALAPPDATA%\insight-reader\logs\insight-reader-YYYY-MM-DD.log`
 
 
 ## 🙏 Acknowledgments

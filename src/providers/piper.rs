@@ -86,9 +86,20 @@ impl PiperTTSProvider {
 
     /// Find the piper binary in standard locations.
     fn find_piper_binary() -> PathBuf {
+        // Platform-specific paths for venv binaries
+        #[cfg(target_os = "windows")]
+        const VENV_BIN_DIR: &str = "Scripts";
+        #[cfg(target_os = "windows")]
+        const PIPER_BIN_NAME: &str = "piper.exe";
+        
+        #[cfg(not(target_os = "windows"))]
+        const VENV_BIN_DIR: &str = "bin";
+        #[cfg(not(target_os = "windows"))]
+        const PIPER_BIN_NAME: &str = "piper";
+        
         // Check project-local virtualenv first (development)
         if let Ok(current_dir) = env::current_dir() {
-            let project_piper = current_dir.join("venv").join("bin").join("piper");
+            let project_piper = current_dir.join("venv").join(VENV_BIN_DIR).join(PIPER_BIN_NAME);
             if project_piper.exists() {
                 debug!(
                     path = %project_piper.display(),
@@ -98,11 +109,22 @@ impl PiperTTSProvider {
             }
         }
 
-        // Check user installation (XDG Base Directory standard: ~/.local/share/insight-reader)
-        if let Some(data_dir) = dirs::data_dir() {
-            let user_piper = data_dir.join("insight-reader").join("venv").join("bin").join("piper");
+        // Check user installation
+        // On Windows: %LOCALAPPDATA%\insight-reader\venv\Scripts\piper.exe
+        // On Unix: ~/.local/share/insight-reader/venv/bin/piper
+        if let Some(data_dir) = dirs::data_local_dir() {
+            let user_piper = data_dir.join("insight-reader").join("venv").join(VENV_BIN_DIR).join(PIPER_BIN_NAME);
             if user_piper.exists() {
-                debug!(path = %user_piper.display(), "Using user-installed piper binary");
+                debug!(path = %user_piper.display(), "Using user-installed piper binary (local data dir)");
+                return user_piper;
+            }
+        }
+        
+        // Also check data_dir (XDG Base Directory standard on Unix)
+        if let Some(data_dir) = dirs::data_dir() {
+            let user_piper = data_dir.join("insight-reader").join("venv").join(VENV_BIN_DIR).join(PIPER_BIN_NAME);
+            if user_piper.exists() {
+                debug!(path = %user_piper.display(), "Using user-installed piper binary (data dir)");
                 return user_piper;
             }
         }
@@ -120,10 +142,17 @@ impl PiperTTSProvider {
         }
 
         // Check system PATH
-        if let Ok(output) = Command::new("which").arg("piper").output() {
+        // On Windows use 'where', on Unix use 'which'
+        #[cfg(target_os = "windows")]
+        let path_cmd = "where";
+        #[cfg(not(target_os = "windows"))]
+        let path_cmd = "which";
+        
+        if let Ok(output) = Command::new(path_cmd).arg("piper").output() {
             if output.status.success() {
                 if let Ok(path_str) = String::from_utf8(output.stdout) {
-                    let trimmed = path_str.trim();
+                    // 'where' on Windows may return multiple lines, take the first
+                    let trimmed = path_str.lines().next().unwrap_or("").trim();
                     if !trimmed.is_empty() {
                         let path_buf = PathBuf::from(trimmed);
                         debug!(path = %path_buf.display(), "Using piper from PATH");
@@ -134,12 +163,16 @@ impl PiperTTSProvider {
         }
 
         // Fallback to user location (will fail validation)
-        let fallback = dirs::data_dir()
-            .unwrap_or_else(|| PathBuf::from("/tmp"))
+        #[cfg(target_os = "windows")]
+        let fallback_base = dirs::data_local_dir().unwrap_or_else(|| PathBuf::from("C:\\Temp"));
+        #[cfg(not(target_os = "windows"))]
+        let fallback_base = dirs::data_dir().unwrap_or_else(|| PathBuf::from("/tmp"));
+        
+        let fallback = fallback_base
             .join("insight-reader")
             .join("venv")
-            .join("bin")
-            .join("piper");
+            .join(VENV_BIN_DIR)
+            .join(PIPER_BIN_NAME);
         warn!(
             path = %fallback.display(),
             "Piper binary not found in known locations, using fallback path"
@@ -165,13 +198,27 @@ impl PiperTTSProvider {
             }
         }
 
-        // Check user installation (XDG Base Directory standard: ~/.local/share/insight-reader)
+        // Check user installation
+        // On Windows: %LOCALAPPDATA%\insight-reader\models
+        // On Unix: ~/.local/share/insight-reader/models (via data_dir)
+        if let Some(data_dir) = dirs::data_local_dir() {
+            let user_model = data_dir.join("insight-reader").join("models").join(&model_name);
+            if user_model.with_extension("onnx").exists() {
+                debug!(
+                    path = %user_model.with_extension("onnx").display(),
+                    "Using user-installed Piper model (local data dir)"
+                );
+                return user_model;
+            }
+        }
+        
+        // Also check data_dir (XDG Base Directory standard on Unix)
         if let Some(data_dir) = dirs::data_dir() {
             let user_model = data_dir.join("insight-reader").join("models").join(&model_name);
             if user_model.with_extension("onnx").exists() {
                 debug!(
                     path = %user_model.with_extension("onnx").display(),
-                    "Using user-installed Piper model"
+                    "Using user-installed Piper model (data dir)"
                 );
                 return user_model;
             }
@@ -193,8 +240,12 @@ impl PiperTTSProvider {
         }
 
         // Fallback to user location (will fail validation)
-        let fallback = dirs::data_dir()
-            .unwrap_or_else(|| PathBuf::from("/tmp"))
+        #[cfg(target_os = "windows")]
+        let fallback_base = dirs::data_local_dir().unwrap_or_else(|| PathBuf::from("C:\\Temp"));
+        #[cfg(not(target_os = "windows"))]
+        let fallback_base = dirs::data_dir().unwrap_or_else(|| PathBuf::from("/tmp"));
+        
+        let fallback = fallback_base
             .join("insight-reader")
             .join("models")
             .join(&model_name);
@@ -239,98 +290,200 @@ impl TTSProvider for PiperTTSProvider {
             "Executing piper command"
         );
 
-        // Run piper to generate audio
-        let mut child = Command::new(&self.piper_bin)
-            .args([
-                "--model",
-                model_arg,
-                "--output_file",
-                "-",
-            ])
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()
-            .map_err(|e| {
-                error!(
-                    error = %e,
-                    piper_bin = %self.piper_bin.display(),
-                    "Failed to start piper process"
-                );
-                TTSError::ProcessError(format!("Failed to start piper: {e}"))
-            })?;
-
-        // Send text to piper
-        {
+        // On Windows, piper has issues with stdout streaming, so we use a temp file
+        // On Unix, we can stream directly to stdout for better performance
+        #[cfg(target_os = "windows")]
+        let audio_data = {
+            use std::fs;
             use std::io::Write;
-            let stdin = child
-                .stdin
-                .as_mut()
-                .ok_or_else(|| TTSError::ProcessError("Failed to open piper stdin".into()))?;
-            stdin
-                .write_all(text.as_bytes())
+            
+            // Create temp file for output
+            let temp_dir = env::temp_dir();
+            let temp_file = temp_dir.join("insight-reader-piper-output.wav");
+            let temp_file_str = temp_file.to_string_lossy().to_string();
+            
+            debug!(temp_file = %temp_file_str, "Using temp file for piper output (Windows)");
+            
+            // Run piper with temp file output
+            let mut child = Command::new(&self.piper_bin)
+                .args([
+                    "--model",
+                    model_arg,
+                    "--output_file",
+                    &temp_file_str,
+                ])
+                .stdin(Stdio::piped())
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .spawn()
                 .map_err(|e| {
                     error!(
                         error = %e,
-                        text_bytes = text.len(),
-                        "Failed to write text to piper stdin"
+                        piper_bin = %self.piper_bin.display(),
+                        "Failed to start piper process"
                     );
-                    TTSError::ProcessError(format!("Failed to write to piper: {e}"))
+                    TTSError::ProcessError(format!("Failed to start piper: {e}"))
                 })?;
-            debug!(text_bytes = text.len(), "Text written to piper stdin");
-        }
 
-        // Wait for completion and get output
-        let output = child
-            .wait_with_output()
-            .map_err(|e| {
-                error!(error = %e, "Piper process wait failed");
-                TTSError::ProcessError(format!("Piper process failed: {e}"))
+            // Send text to piper
+            {
+                let stdin = child
+                    .stdin
+                    .as_mut()
+                    .ok_or_else(|| TTSError::ProcessError("Failed to open piper stdin".into()))?;
+                stdin
+                    .write_all(text.as_bytes())
+                    .map_err(|e| {
+                        error!(error = %e, text_bytes = text.len(), "Failed to write text to piper stdin");
+                        TTSError::ProcessError(format!("Failed to write to piper: {e}"))
+                    })?;
+                debug!(text_bytes = text.len(), "Text written to piper stdin");
+            }
+
+            // Wait for completion
+            let output = child
+                .wait_with_output()
+                .map_err(|e| {
+                    error!(error = %e, "Piper process wait failed");
+                    TTSError::ProcessError(format!("Piper process failed: {e}"))
+                })?;
+
+            let exit_code = output.status.code();
+            let stderr = String::from_utf8_lossy(&output.stderr);
+
+            if !output.status.success() {
+                error!(exit_code = ?exit_code, stderr = %stderr.trim(), "Piper process failed");
+                // Clean up temp file on error
+                let _ = fs::remove_file(&temp_file);
+                return Err(TTSError::ProcessError(format!(
+                    "Piper failed with code {:?}: {}",
+                    exit_code,
+                    stderr.trim()
+                )));
+            }
+
+            // Read the WAV file and extract raw PCM data
+            let wav_data = fs::read(&temp_file).map_err(|e| {
+                error!(error = %e, path = %temp_file_str, "Failed to read piper output file");
+                TTSError::ProcessError(format!("Failed to read piper output: {e}"))
             })?;
+            
+            // Clean up temp file
+            let _ = fs::remove_file(&temp_file);
+            
+            if wav_data.is_empty() {
+                error!("Piper produced empty output file");
+                return Err(TTSError::ProcessError("No audio data generated by piper".into()));
+            }
+            
+            // WAV files have a 44-byte header, skip it to get raw PCM
+            // Verify it's a valid WAV file
+            if wav_data.len() < 44 || &wav_data[0..4] != b"RIFF" {
+                error!(bytes = wav_data.len(), "Invalid WAV file format from piper");
+                return Err(TTSError::ProcessError("Invalid audio format from piper".into()));
+            }
+            
+            let pcm_data = &wav_data[44..];
+            AudioPlayer::pcm_to_f32(pcm_data)
+        };
+        
+        #[cfg(not(target_os = "windows"))]
+        let audio_data = {
+            use std::io::Write;
+            
+            // Run piper to generate audio (stream to stdout)
+            let mut child = Command::new(&self.piper_bin)
+                .args([
+                    "--model",
+                    model_arg,
+                    "--output_file",
+                    "-",
+                ])
+                .stdin(Stdio::piped())
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .spawn()
+                .map_err(|e| {
+                    error!(
+                        error = %e,
+                        piper_bin = %self.piper_bin.display(),
+                        "Failed to start piper process"
+                    );
+                    TTSError::ProcessError(format!("Failed to start piper: {e}"))
+                })?;
 
-        let exit_code = output.status.code();
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        let stdout_len = output.stdout.len();
+            // Send text to piper
+            {
+                let stdin = child
+                    .stdin
+                    .as_mut()
+                    .ok_or_else(|| TTSError::ProcessError("Failed to open piper stdin".into()))?;
+                stdin
+                    .write_all(text.as_bytes())
+                    .map_err(|e| {
+                        error!(
+                            error = %e,
+                            text_bytes = text.len(),
+                            "Failed to write text to piper stdin"
+                        );
+                        TTSError::ProcessError(format!("Failed to write to piper: {e}"))
+                    })?;
+                debug!(text_bytes = text.len(), "Text written to piper stdin");
+            }
 
-        if !output.status.success() {
-            error!(
-                exit_code = ?exit_code,
-                stderr = %stderr.trim(),
-                stdout_bytes = stdout_len,
-                "Piper process failed"
-            );
-            return Err(TTSError::ProcessError(format!(
-                "Piper failed with code {:?}: {}",
-                exit_code,
-                stderr.trim()
-            )));
-        }
+            // Wait for completion and get output
+            let output = child
+                .wait_with_output()
+                .map_err(|e| {
+                    error!(error = %e, "Piper process wait failed");
+                    TTSError::ProcessError(format!("Piper process failed: {e}"))
+                })?;
 
-        if output.stdout.is_empty() {
-            // Log detailed diagnostics when no audio is generated
-            error!(
-                exit_code = ?exit_code,
-                stderr = %stderr.trim(),
-                stdout_bytes = 0,
-                piper_bin = %self.piper_bin.display(),
-                model_path = %model_arg,
-                text_preview = %text.chars().take(100).collect::<String>(),
-                text_bytes = text.len(),
-                "Piper exited successfully but produced no audio output"
-            );
-            let error_msg = if stderr.trim().is_empty() {
-                "No audio data generated by piper".to_string()
-            } else {
-                format!("No audio data generated by piper. stderr: {}", stderr.trim())
-            };
-            return Err(TTSError::ProcessError(error_msg));
-        }
+            let exit_code = output.status.code();
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            let stdout_len = output.stdout.len();
 
-        // Convert PCM to f32 and play
-        let audio_data = AudioPlayer::pcm_to_f32(&output.stdout);
+            if !output.status.success() {
+                error!(
+                    exit_code = ?exit_code,
+                    stderr = %stderr.trim(),
+                    stdout_bytes = stdout_len,
+                    "Piper process failed"
+                );
+                return Err(TTSError::ProcessError(format!(
+                    "Piper failed with code {:?}: {}",
+                    exit_code,
+                    stderr.trim()
+                )));
+            }
+
+            if output.stdout.is_empty() {
+                // Log detailed diagnostics when no audio is generated
+                error!(
+                    exit_code = ?exit_code,
+                    stderr = %stderr.trim(),
+                    stdout_bytes = 0,
+                    piper_bin = %self.piper_bin.display(),
+                    model_path = %model_arg,
+                    text_preview = %text.chars().take(100).collect::<String>(),
+                    text_bytes = text.len(),
+                    "Piper exited successfully but produced no audio output"
+                );
+                let error_msg = if stderr.trim().is_empty() {
+                    "No audio data generated by piper".to_string()
+                } else {
+                    format!("No audio data generated by piper. stderr: {}", stderr.trim())
+                };
+                return Err(TTSError::ProcessError(error_msg));
+            }
+
+            // Convert PCM to f32
+            AudioPlayer::pcm_to_f32(&output.stdout)
+        };
+
         let duration_sec = audio_data.len() as f32 / 22050.0;
         info!(
-            bytes = output.stdout.len(),
+            samples = audio_data.len(),
             duration_sec = format!("{:.1}", duration_sec),
             "Piper: audio generated"
         );
