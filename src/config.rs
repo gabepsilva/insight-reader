@@ -67,6 +67,18 @@ struct RawConfig {
     /// OCR backend name ("default" or "better_ocr").
     #[serde(default)]
     ocr_backend: Option<String>,
+
+    /// Hotkey enabled flag.
+    #[serde(default)]
+    hotkey_enabled: Option<bool>,
+
+    /// Hotkey modifiers (comma-separated: "command", "shift", "alt", "control").
+    #[serde(default)]
+    hotkey_modifiers: Option<String>,
+
+    /// Hotkey key code (e.g., "r", "t", "space").
+    #[serde(default)]
+    hotkey_key: Option<String>,
 }
 
 fn config_path() -> Option<PathBuf> {
@@ -113,6 +125,8 @@ fn save_raw_config(mut cfg: RawConfig) -> Result<(), ConfigError> {
     cfg.log_level = cfg.log_level.filter(|s| !s.is_empty());
     cfg.selected_voice = cfg.selected_voice.filter(|s| !s.is_empty());
     cfg.ocr_backend = cfg.ocr_backend.filter(|s| !s.is_empty());
+    cfg.hotkey_modifiers = cfg.hotkey_modifiers.filter(|s| !s.is_empty());
+    cfg.hotkey_key = cfg.hotkey_key.filter(|s| !s.is_empty());
 
     let data = serde_json::to_string_pretty(&cfg)?;
     fs::write(&path, data)?;
@@ -332,5 +346,118 @@ pub fn save_ocr_backend(backend: OCRBackend) {
     cfg.ocr_backend = Some(ocr_backend_to_str(backend).to_string());
     if let Err(err) = save_raw_config(cfg) {
         error!(error = ?err, "Failed to save config");
+    }
+}
+
+use crate::system::HotkeyConfig;
+
+fn modifiers_to_string(modifiers: global_hotkey::hotkey::Modifiers) -> String {
+    use global_hotkey::hotkey::Modifiers;
+    let mut parts = Vec::new();
+    // Check for common modifier flags
+    if modifiers.contains(Modifiers::SHIFT) {
+        parts.push("shift");
+    }
+    if modifiers.contains(Modifiers::ALT) {
+        parts.push("alt");
+    }
+    if modifiers.contains(Modifiers::CONTROL) {
+        parts.push("control");
+    }
+    // META is used for Command on macOS
+    #[cfg(target_os = "macos")]
+    if modifiers.contains(Modifiers::META) {
+        parts.push("command");
+    }
+    #[cfg(not(target_os = "macos"))]
+    if modifiers.contains(Modifiers::META) {
+        parts.push("meta");
+    }
+    parts.join(",")
+}
+
+fn string_to_modifiers(s: &str) -> global_hotkey::hotkey::Modifiers {
+    use global_hotkey::hotkey::Modifiers;
+    let mut modifiers = Modifiers::empty();
+    for part in s.split(',') {
+        match part.trim().to_lowercase().as_str() {
+            "command" | "cmd" | "meta" => modifiers |= Modifiers::META,
+            "control" | "ctrl" => modifiers |= Modifiers::CONTROL,
+            "shift" => modifiers |= Modifiers::SHIFT,
+            "alt" | "option" => modifiers |= Modifiers::ALT,
+            _ => {}
+        }
+    }
+    modifiers
+}
+
+fn code_to_string(code: global_hotkey::hotkey::Code) -> String {
+    let debug_str = format!("{:?}", code);
+    debug_str
+        .strip_prefix("Key")
+        .unwrap_or(&debug_str)
+        .to_lowercase()
+}
+
+fn string_to_code(s: &str) -> Option<global_hotkey::hotkey::Code> {
+    // Simple mapping for common keys
+    match s.to_lowercase().as_str() {
+        "r" => Some(global_hotkey::hotkey::Code::KeyR),
+        "t" => Some(global_hotkey::hotkey::Code::KeyT),
+        "s" => Some(global_hotkey::hotkey::Code::KeyS),
+        "space" => Some(global_hotkey::hotkey::Code::Space),
+        _ => {
+            // Try to parse as Code enum variant
+            // This is a simplified version - in production you'd want a full mapping
+            warn!(key = %s, "Unknown hotkey key, using default");
+            Some(global_hotkey::hotkey::Code::KeyR)
+        }
+    }
+}
+
+/// Load the persisted hotkey configuration, defaulting to Command+R if not set.
+pub fn load_hotkey_config() -> (HotkeyConfig, bool) {
+    match load_raw_config() {
+        Ok(cfg) => {
+            let enabled = cfg.hotkey_enabled.unwrap_or(true);
+            let default_modifiers = {
+                #[cfg(target_os = "macos")]
+                {
+                    global_hotkey::hotkey::Modifiers::META
+                }
+                #[cfg(not(target_os = "macos"))]
+                {
+                    global_hotkey::hotkey::Modifiers::CONTROL
+                }
+            };
+            let modifiers = cfg.hotkey_modifiers
+                .as_deref()
+                .map(string_to_modifiers)
+                .unwrap_or(default_modifiers);
+            let key = cfg.hotkey_key
+                .as_deref()
+                .and_then(string_to_code)
+                .unwrap_or(global_hotkey::hotkey::Code::KeyR);
+            
+            (HotkeyConfig { modifiers, key }, enabled)
+        }
+        Err(err) => {
+            warn!(error = ?err, "Failed to load hotkey config, using defaults");
+            (HotkeyConfig::default(), true)
+        }
+    }
+}
+
+/// Persist the hotkey configuration to disk.
+///
+/// Errors are logged and otherwise ignored.
+pub fn save_hotkey_config(config: &HotkeyConfig, enabled: bool) {
+    debug!(?config, enabled, "Saving hotkey config");
+    let mut cfg = load_or_default_config();
+    cfg.hotkey_enabled = Some(enabled);
+    cfg.hotkey_modifiers = Some(modifiers_to_string(config.modifiers));
+    cfg.hotkey_key = Some(code_to_string(config.key));
+    if let Err(err) = save_raw_config(cfg) {
+        error!(error = ?err, "Failed to save hotkey config");
     }
 }

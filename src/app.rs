@@ -1,5 +1,6 @@
 //! Iced application adapter (thin UI layer)
 
+use iced::keyboard;
 use iced::time::{self, Duration};
 use iced::{Element, Point, Size, Subscription, Task};
 use iced::window;
@@ -14,13 +15,33 @@ pub fn new() -> (App, Task<Message>) {
     let mut app = App::new(None);
     
     // Initialize system tray
-    match crate::system::SystemTray::new() {
+    match crate::system::SystemTray::new(Some(&app.hotkey_config)) {
         Ok(tray) => {
             app.system_tray = Some(tray);
             info!("System tray initialized successfully");
         }
         Err(e) => {
             tracing::warn!(error = %e, "Failed to initialize system tray, continuing without it");
+        }
+    }
+    
+    // Initialize hotkey manager
+    match crate::system::HotkeyManager::new() {
+        Ok(mut hotkey_manager) => {
+            // Register hotkey if enabled
+            if app.hotkey_enabled {
+                if let Err(e) = hotkey_manager.register(app.hotkey_config.clone()) {
+                    tracing::warn!(error = %e, "Failed to register hotkey, continuing without it");
+                    app.hotkey_enabled = false;
+                } else {
+                    info!("Hotkey registered successfully");
+                }
+            }
+            app.hotkey_manager = Some(hotkey_manager);
+        }
+        Err(e) => {
+            tracing::warn!(error = %e, "Failed to initialize hotkey manager, continuing without it");
+            app.hotkey_enabled = false;
         }
     }
     
@@ -174,5 +195,42 @@ pub fn subscription(app: &App) -> Subscription<Message> {
         Subscription::none()
     };
     
-    Subscription::batch(vec![window_opened, window_closed, tick, tray_poll])
+    // Poll for hotkey events periodically (every 100ms)
+    // Note: The actual hotkey event checking happens in update.rs when HotkeyPressed is received
+    let hotkey_poll = if app.hotkey_manager.is_some() && app.hotkey_enabled {
+        time::every(Duration::from_millis(100)).map(|_| Message::HotkeyPressed)
+    } else {
+        Subscription::none()
+    };
+    
+    // Subscribe to keyboard events when listening for hotkey input
+    let keyboard_sub = if app.listening_for_hotkey {
+        keyboard::listen().filter_map(|event| {
+            use iced::keyboard::{key::Named, Event, Key};
+            
+            match event {
+                Event::KeyPressed { key, modifiers, .. } => {
+                    // Filter out modifier-only key presses (we only want key combinations)
+                    // Also filter out Escape key (used to cancel)
+                    match key {
+                        Key::Named(Named::Escape) => Some(Message::StopListeningForHotkey),
+                        Key::Named(Named::Shift) | Key::Named(Named::Control) | Key::Named(Named::Alt) | Key::Named(Named::Super) => None,
+                        _ => {
+                            // Only capture if there's at least one modifier
+                            if !modifiers.is_empty() {
+                                Some(Message::HotkeyCaptured(key, modifiers))
+                            } else {
+                                None
+                            }
+                        }
+                    }
+                }
+                _ => None,
+            }
+        })
+    } else {
+        Subscription::none()
+    };
+    
+    Subscription::batch(vec![window_opened, window_closed, tick, tray_poll, hotkey_poll, keyboard_sub])
 }

@@ -1,6 +1,7 @@
 //! Stub implementation for non-macOS platforms
 
 use std::sync::mpsc;
+use crate::system::HotkeyConfig;
 
 /// System tray handle (stub)
 pub struct SystemTray {
@@ -18,7 +19,7 @@ pub enum TrayEvent {
 
 impl SystemTray {
     /// Create system tray (stub - does nothing on non-macOS)
-    pub fn new() -> Result<Self, Box<dyn std::error::Error>> {
+    pub fn new(_hotkey_config: Option<&HotkeyConfig>) -> Result<Self, Box<dyn std::error::Error>> {
         let (_sender, receiver) = mpsc::channel();
         Ok(Self {
             _receiver: receiver,

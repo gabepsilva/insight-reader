@@ -1045,6 +1045,134 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
             info!("Quitting application from tray menu");
             iced::exit()
         }
+        Message::HotkeyPressed => {
+            // Check if hotkey event actually occurred
+            if let Some(ref mut hotkey_manager) = app.hotkey_manager {
+                if hotkey_manager.try_recv().is_some() {
+                    info!("Hotkey pressed - triggering read");
+                    // Use the same logic as ReadSelected
+                    let fetch_task = fetch_selected_text_task("hotkey");
+                    if app.window_hidden || app.main_window_id.is_none() {
+                        // Show window first, then fetch text
+                        let (window_id, open_task) = open_main_window();
+                        app.main_window_id = Some(window_id);
+                        app.window_hidden = false;
+                        return Task::batch([open_task, fetch_task]);
+                    }
+                    return fetch_task;
+                }
+            }
+            Task::none()
+        }
+        Message::HotkeyConfigChanged(config) => {
+            info!("Hotkey configuration changed");
+            app.hotkey_config = config.clone();
+            
+            // Update hotkey registration if enabled
+            if app.hotkey_enabled {
+                if let Some(ref mut hotkey_manager) = app.hotkey_manager {
+                    if let Err(e) = hotkey_manager.register(config) {
+                        error!(error = %e, "Failed to register new hotkey");
+                        app.error_message = Some(format!("Failed to register hotkey: {e}"));
+                    } else {
+                        info!("Hotkey re-registered successfully");
+                        app.error_message = None;
+                    }
+                }
+            }
+            
+            crate::config::save_hotkey_config(&app.hotkey_config, app.hotkey_enabled);
+            Task::none()
+        }
+        Message::HotkeyToggled(enabled) => {
+            info!(enabled, "Hotkey toggled");
+            app.hotkey_enabled = enabled;
+            
+            if let Some(ref mut hotkey_manager) = app.hotkey_manager {
+                if enabled {
+                    if let Err(e) = hotkey_manager.register(app.hotkey_config.clone()) {
+                        error!(error = %e, "Failed to register hotkey");
+                        app.error_message = Some(format!("Failed to register hotkey: {e}"));
+                        app.hotkey_enabled = false; // Revert if registration failed
+                    } else {
+                        info!("Hotkey registered successfully");
+                        app.error_message = None;
+                    }
+                } else if let Err(e) = hotkey_manager.unregister() {
+                    warn!(error = %e, "Failed to unregister hotkey");
+                } else {
+                    info!("Hotkey unregistered successfully");
+                }
+            }
+            
+            crate::config::save_hotkey_config(&app.hotkey_config, app.hotkey_enabled);
+            Task::none()
+        }
+        Message::StartListeningForHotkey => {
+            info!("Starting to listen for hotkey input");
+            app.listening_for_hotkey = true;
+            app.error_message = None; // Clear any previous errors
+            Task::none()
+        }
+        Message::StopListeningForHotkey => {
+            info!("Stopped listening for hotkey input");
+            app.listening_for_hotkey = false;
+            app.error_message = None;
+            Task::none()
+        }
+        Message::HotkeyCaptured(key, modifiers) => {
+            info!(?key, ?modifiers, "Hotkey combination captured");
+            
+            // Convert Iced key/modifiers to global_hotkey format
+            use crate::ui::settings::hotkeys::{iced_key_to_global_hotkey_code, iced_modifiers_to_global_hotkey_modifiers};
+            
+            let Some(code) = iced_key_to_global_hotkey_code(&key) else {
+                error!("Invalid key captured: {:?}", key);
+                app.error_message = Some("Invalid key. Please try again.".to_string());
+                app.listening_for_hotkey = false;
+                return Task::none();
+            };
+            
+            let gh_modifiers = iced_modifiers_to_global_hotkey_modifiers(modifiers);
+            
+            // Validate that we have at least one modifier
+            if gh_modifiers.is_empty() {
+                error!("No modifiers in captured hotkey");
+                app.error_message = Some("Hotkey must include at least one modifier (Ctrl/Cmd, Shift, or Alt).".to_string());
+                app.listening_for_hotkey = false;
+                return Task::none();
+            }
+            
+            // Create new hotkey config
+            let new_config = crate::system::HotkeyConfig {
+                modifiers: gh_modifiers,
+                key: code,
+            };
+            
+            // Exit listening mode
+            app.listening_for_hotkey = false;
+            
+            // Update the hotkey configuration
+            // This will trigger HotkeyConfigChanged internally
+            app.hotkey_config = new_config.clone();
+            
+            // Update hotkey registration if enabled
+            if app.hotkey_enabled {
+                if let Some(ref mut hotkey_manager) = app.hotkey_manager {
+                    if let Err(e) = hotkey_manager.register(new_config.clone()) {
+                        error!(error = %e, "Failed to register new hotkey");
+                        app.error_message = Some(format!("Failed to register hotkey: {e}"));
+                    } else {
+                        info!("Hotkey registered successfully");
+                        app.error_message = None;
+                    }
+                }
+            }
+            
+            // Save to config
+            crate::config::save_hotkey_config(&app.hotkey_config, app.hotkey_enabled);
+            Task::none()
+        }
     }
 }
 

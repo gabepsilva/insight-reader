@@ -2,10 +2,11 @@
 
 use std::sync::mpsc;
 use tray_icon::{
-    menu::{Menu, MenuItem, MenuEvent},
+    menu::{Menu, MenuItem, MenuEvent, PredefinedMenuItem},
     TrayIconBuilder, TrayIcon,
 };
 use tracing::info;
+use crate::system::{HotkeyConfig, format_hotkey_display};
 
 // Embedded logo asset
 const LOGO_PNG: &[u8] = include_bytes!("../../../assets/logo.png");
@@ -27,26 +28,40 @@ pub enum TrayEvent {
 
 impl SystemTray {
     /// Create and initialize the system tray icon
-    pub fn new() -> Result<Self, Box<dyn std::error::Error>> {
+    pub fn new(hotkey_config: Option<&HotkeyConfig>) -> Result<Self, Box<dyn std::error::Error>> {
         let (sender, receiver) = mpsc::channel();
         
+        // Format hotkey display for menu item
+        let read_selected_label = if let Some(config) = hotkey_config {
+            let hotkey_display = format_hotkey_display(config);
+            format!("Read Selected\t{}", hotkey_display)
+        } else {
+            "Read Selected".to_string()
+        };
+        
         // Create menu items
+        let read_selected_item = MenuItem::new(&read_selected_label, true, None);
         let show_item = MenuItem::new("Show Window", true, None);
         let hide_item = MenuItem::new("Hide Window", true, None);
-        let read_selected_item = MenuItem::new("Read Selected", true, None);
         let quit_item = MenuItem::new("Quit", true, None);
         
         // Store menu item IDs
+        let read_selected_item_id = read_selected_item.id();
         let show_item_id = show_item.id();
         let hide_item_id = hide_item.id();
-        let read_selected_item_id = read_selected_item.id();
         let quit_item_id = quit_item.id();
         
-        // Create menu
+        // Create separators
+        let separator = PredefinedMenuItem::separator();
+        let quit_separator = PredefinedMenuItem::separator();
+        
+        // Create menu - Read Selected first, then separator, then other items, then separator before Quit
         let menu = Menu::new();
+        menu.append(&read_selected_item)?;
+        menu.append(&separator)?;
         menu.append(&show_item)?;
         menu.append(&hide_item)?;
-        menu.append(&read_selected_item)?;
+        menu.append(&quit_separator)?;
         menu.append(&quit_item)?;
         
         // Load and resize the app logo for the tray icon

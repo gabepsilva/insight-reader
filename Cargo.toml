@@ -25,6 +25,7 @@ arboard = { version = "3.2", features = ["wayland-data-control"] }  # Cross-plat
 open = "5.0"            # Cross-platform URL/file opening
 tray-icon = "0.13"     # System tray icon support
 image = "0.25"         # Image decoding for tray icon
+global-hotkey = "0.5"  # Global hotkey support
 
 [target.'cfg(target_os = "macos")'.dependencies]
 core-foundation = "0.9" # Core Foundation types for macOS Accessibility API

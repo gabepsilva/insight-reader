@@ -10,6 +10,7 @@ use crate::styles::{
     modal_content_style, section_style, transparent_button_style, wave_bar_style,
     white_checkbox_style, white_radio_style, window_style,
 };
+use crate::ui::settings::hotkeys;
 
 const MIN_HEIGHT: f32 = 4.0;
 const MAX_HEIGHT: f32 = 24.0;
@@ -639,6 +640,8 @@ pub fn settings_window_view<'a>(app: &'a App) -> Element<'a, Message> {
             scrollable(
                 container(
                     column![
+                        hotkeys::hotkey_settings_section(app),
+                        Space::new().height(Length::Fixed(12.0)),
                         ocr_section,
                         Space::new().height(Length::Fixed(12.0)),
                         text_cleanup_section,

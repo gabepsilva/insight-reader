@@ -4,10 +4,12 @@ mod clipboard;
 mod text_cleanup;
 mod screenshot;
 mod tray;
+mod hotkey;
 
 pub use clipboard::{get_selected_text, copy_to_clipboard};
 pub use text_cleanup::cleanup_text;
 pub use screenshot::{capture_region, extract_text_from_image};
 pub use tray::{SystemTray, TrayEvent};
+pub use hotkey::{HotkeyManager, HotkeyConfig, format_hotkey_display};
 
 

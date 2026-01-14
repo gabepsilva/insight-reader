@@ -83,6 +83,12 @@ pub enum Message {
     ReadSelected, // Read currently selected text (from tray menu)
     Quit, // Quit the application (from tray menu)
     TrayEventReceived, // Poll for tray events
+    HotkeyPressed, // Global hotkey was pressed
+    HotkeyConfigChanged(crate::system::HotkeyConfig), // Hotkey configuration changed
+    HotkeyToggled(bool), // Hotkey enabled/disabled
+    StartListeningForHotkey, // Start listening for hotkey input
+    StopListeningForHotkey, // Stop listening for hotkey input
+    HotkeyCaptured(iced::keyboard::Key, iced::keyboard::Modifiers), // Hotkey combination captured
 }
 
 /// Voice metadata from piper-voices repository
@@ -181,6 +187,14 @@ pub struct App {
     pub system_tray: Option<crate::system::SystemTray>,
     /// Whether the main window is hidden (minimized to tray)
     pub window_hidden: bool,
+    /// Hotkey manager for global shortcuts
+    pub hotkey_manager: Option<crate::system::HotkeyManager>,
+    /// Current hotkey configuration
+    pub hotkey_config: crate::system::HotkeyConfig,
+    /// Whether hotkey is enabled
+    pub hotkey_enabled: bool,
+    /// Whether currently listening for hotkey input
+    pub listening_for_hotkey: bool,
 }
 
 impl Default for App {
@@ -221,6 +235,10 @@ impl Default for App {
             extracted_text_editor: None,
             system_tray: None,
             window_hidden: false,
+            hotkey_manager: None,
+            hotkey_config: crate::system::HotkeyConfig::default(),
+            hotkey_enabled: false,
+            listening_for_hotkey: false,
         }
     }
 }
@@ -233,6 +251,7 @@ impl App {
         let text_cleanup_enabled = config::load_text_cleanup_enabled();
         let selected_voice = config::load_selected_voice();
         let selected_ocr_backend = config::load_ocr_backend();
+        let (hotkey_config, hotkey_enabled) = config::load_hotkey_config();
         Self {
             playback_state: PlaybackState::Stopped,
             progress: 0.0,
@@ -269,6 +288,10 @@ impl App {
             extracted_text_editor: None,
             system_tray: None,
             window_hidden: false,
+            hotkey_manager: None,
+            hotkey_config,
+            hotkey_enabled,
+            listening_for_hotkey: false,
         }
     }
 }

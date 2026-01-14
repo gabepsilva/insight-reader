@@ -11,6 +11,7 @@ mod providers;
 mod styles;
 mod system;
 mod update;
+mod ui;
 mod view;
 mod voices;
 
