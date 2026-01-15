@@ -1,4 +1,4 @@
-//! macOS-specific hotkey display formatting
+//! Windows-specific hotkey display formatting
 
 use global_hotkey::hotkey::Modifiers;
 use super::common::format_key_code;
@@ -6,23 +6,22 @@ use super::common::format_key_code;
 // Re-export common types and functions
 pub use super::common::{HotkeyConfig, HotkeyManager};
 
-/// Format hotkey configuration as a display string for menu items (macOS uses symbols)
+/// Format hotkey configuration as a display string for menu items (Windows uses text labels)
 pub fn format_hotkey_display(config: &super::common::HotkeyConfig) -> String {
     let mut parts = Vec::new();
-    let key_str = format_key_code(config.key);
     
     if config.modifiers.contains(Modifiers::META) {
-        parts.push("⌘".to_string());
-    }
-    if config.modifiers.contains(Modifiers::SHIFT) {
-        parts.push("⇧".to_string());
-    }
-    if config.modifiers.contains(Modifiers::ALT) {
-        parts.push("⌥".to_string());
+        parts.push("Meta".to_string());
     }
     if config.modifiers.contains(Modifiers::CONTROL) {
-        parts.push("⌃".to_string());
+        parts.push("Ctrl".to_string());
     }
-    parts.push(key_str);
-    parts.join("")
+    if config.modifiers.contains(Modifiers::SHIFT) {
+        parts.push("Shift".to_string());
+    }
+    if config.modifiers.contains(Modifiers::ALT) {
+        parts.push("Alt".to_string());
+    }
+    parts.push(format_key_code(config.key));
+    parts.join(" + ")
 }
