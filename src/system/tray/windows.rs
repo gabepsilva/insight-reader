@@ -1,4 +1,4 @@
-//! macOS system tray implementation
+//! Windows system tray implementation
 
 use std::sync::mpsc;
 use tray_icon::{
@@ -8,8 +8,8 @@ use tray_icon::{
 use tracing::info;
 use crate::system::{HotkeyConfig, format_hotkey_display};
 
-// Embedded logo asset
-const LOGO_PNG: &[u8] = include_bytes!("../../../assets/logo.png");
+// Embedded logo asset - using ICO file for Windows
+const LOGO_ICO: &[u8] = include_bytes!("../../../assets/logo.ico");
 
 /// System tray handle
 pub struct SystemTray {
@@ -62,7 +62,7 @@ impl SystemTray {
         menu.append(&quit_item)?;
         
         // Load and resize the app logo for the tray icon
-        // macOS menu bar icons are typically 16x16 or 22x22 (retina)
+        // Windows tray icons are typically 16x16 (standard) or 32x32 (high DPI)
         let (rgba_data, width, height) = load_tray_icon_from_logo()?;
         let icon = tray_icon::Icon::from_rgba(rgba_data, width, height)
             .map_err(|e| format!("Failed to create icon: {e}"))?;
@@ -112,13 +112,13 @@ impl SystemTray {
 /// Load the app logo and convert it to RGBA format for the tray icon
 /// Returns (rgba_data, width, height)
 fn load_tray_icon_from_logo() -> Result<(Vec<u8>, u32, u32), Box<dyn std::error::Error>> {
-    // Decode PNG and convert to RGBA
-    let img = image::load_from_memory(LOGO_PNG)
-        .map_err(|e| format!("Failed to decode logo PNG: {e}"))?
+    // Decode ICO and convert to RGBA
+    let img = image::load_from_memory(LOGO_ICO)
+        .map_err(|e| format!("Failed to decode logo ICO: {e}"))?
         .to_rgba8();
     
-    // Resize to 22x22 for better quality on retina displays
-    const TARGET_SIZE: u32 = 22;
+    // Resize to 32x32 for high DPI displays (Windows will scale down as needed)
+    const TARGET_SIZE: u32 = 32;
     let rgba_data = image::imageops::resize(
         &img,
         TARGET_SIZE,

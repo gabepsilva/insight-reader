@@ -1,19 +1,20 @@
 //! Stub implementation for platforms without hotkey support
 
+use global_hotkey::hotkey::{Code, Modifiers};
 use tracing::warn;
 
 /// Hotkey configuration
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HotkeyConfig {
-    pub modifiers: u8, // Placeholder
-    pub key: u8,       // Placeholder
+    pub modifiers: Modifiers,
+    pub key: Code,
 }
 
 impl Default for HotkeyConfig {
     fn default() -> Self {
         Self {
-            modifiers: 0,
-            key: 0,
+            modifiers: Modifiers::CONTROL,
+            key: Code::KeyR,
         }
     }
 }
@@ -55,11 +56,31 @@ impl HotkeyManager {
 }
 
 /// Format key code as a display string (stub)
-pub fn format_key_code(_code: u8) -> String {
-    "N/A".to_string()
+pub fn format_key_code(code: Code) -> String {
+    let debug_str = format!("{:?}", code);
+    debug_str
+        .strip_prefix("Key")
+        .unwrap_or(&debug_str)
+        .to_uppercase()
 }
 
 /// Format hotkey configuration as a display string (stub)
-pub fn format_hotkey_display(_config: &HotkeyConfig) -> String {
-    "Not supported".to_string()
+pub fn format_hotkey_display(config: &HotkeyConfig) -> String {
+    let mut parts = Vec::<String>::new();
+    let key_str = format_key_code(config.key);
+    
+    if config.modifiers.contains(Modifiers::META) {
+        parts.push("Meta".to_string());
+    }
+    if config.modifiers.contains(Modifiers::CONTROL) {
+        parts.push("Ctrl".to_string());
+    }
+    if config.modifiers.contains(Modifiers::SHIFT) {
+        parts.push("Shift".to_string());
+    }
+    if config.modifiers.contains(Modifiers::ALT) {
+        parts.push("Alt".to_string());
+    }
+    parts.push(key_str);
+    parts.join(" + ")
 }
