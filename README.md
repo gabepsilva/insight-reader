@@ -1,44 +1,74 @@
-+# Insight Reader TTS Engine
+# Insight Reader
 
 <div align="center">
 <img src="assets/logo.svg" height="128">
 
-![Windows](https://img.shields.io/badge/Windows-Compatible-blue?style=for-the-badge&logo=windows)
-![macOS](https://img.shields.io/badge/macOS-Compatible-black?style=for-the-badge&logo=apple)
-![Linux](https://img.shields.io/badge/Linux-Compatible-black?style=for-the-badge&logo=linux)
 ![Rust](https://img.shields.io/badge/Rust-2021+-orange?style=for-the-badge&logo=rust)
 ![Piper](https://img.shields.io/badge/Piper-TTS-green?style=for-the-badge)
 ![AWS Polly](https://img.shields.io/badge/AWS-Polly-yellow?style=for-the-badge)
 
 
-
-*High-quality text-to-speech with beautiful GUI, multiple providers, and cross-platform support*
+*High-quality text-to-speech with beautiful GUI, multiple Text-to-Speech providers, and cross-platform support*
 
 </div>
 
+
+<div align="center">
+
+<img src="marketing/windows-logo.svg" height="64" alt="Windows">
+<img src="marketing/macos-logo.svg" height="64" alt="macOS">
+<img src="marketing/linux-logo.svg" height="64" alt="Linux">
+
+</div>
+
+## 🚀 Easy installation
+
+### MacOs and Linux
+
+Open **Terminal** and run:
+
+```bash
+curl -fsSL https://insightreader.xyz/install.sh | bash
+```
+
+### Windows
+
+Open **PowerShell** and run:
+
+```powershell
+iwr https://insightreader.xyz/install.ps1 | iex
+```
+
 ## ✨ Features
 
-<table>
+<table style="border: none;">
 <tr>
-<td width="50%">
+<td width="50%" style="border: none;">
 
 **🌍 Multiple TTS Providers**
-- **Piper** (local, offline) - Fast, privacy-focused local TTS with 100+ voices
-- **AWS Polly** (cloud) - High-quality neural voices with multiple engines (Standard, Neural, Generative, LongForm)
+- **<a href="https://github.com/rhasspy/piper" target="_blank" rel="noopener noreferrer">Piper</a>** (local, offline) - Fast, privacy-focused local TTS with 100+ voices
+- **<a href="https://aws.amazon.com/polly/" target="_blank" rel="noopener noreferrer">AWS Polly</a>** (cloud) - High-quality neural voices with multiple engines (Standard, Neural, Generative, LongForm)
+- *More to come...*
 
 **🎨 Modern GUI**
 - Floating borderless window with drag support
 - Real-time waveform visualization
 - Play/pause/stop controls
 - Skip forward/backward (5 seconds)
+- Modern settings dialog with scrollable content
+- Hotkey configuration UI with live capture
+- Voice download interface with language flags
 
 </td>
-<td width="50%">
+<td width="50%" style="border: none;">
 
 **🎯 System Integration**
 - Works with any application (browser, editor, etc.)
 - Cross-platform support (Windows, Linux, macOS)
-- Text cleanup toggle
+- System tray icon with quick access menu
+- Global hotkeys (Windows, macOS)
+- Natural Reading (text cleanup) toggle
+- OCR support for reading text from images (Windows Media OCR, macOS Vision, Linux EasyOCR)
 
 
 **⚡ Lightning Fast**
@@ -55,11 +85,23 @@
 </tr>
 </table>
 
-## 🚀 Easy installation
+## 📊 Tested Platforms
+This project runs extensive testing for reliability and maintainability.
 
-```bash
-curl -fsSL https://insightreader.xyz/install.sh | bash
-```
+**Release tested on:**
+
+| Platform | Desktop Environment / WM | Status |
+|----------|------------------------|--------|
+| <img src="marketing/macos-logo.svg" height="16" alt="macOS"> **macOS** | Apple Silicon (M1/M2/M3) | ✅ Tested |
+| <img src="marketing/macos-logo.svg" height="16" alt="macOS"> **macOS** | Intel | ✅ Tested |
+| <img src="marketing/windows-logo.svg" height="16" alt="Windows"> **Windows 11** | Desktop | ✅ Tested |
+| <img src="marketing/windows-logo.svg" height="16" alt="Windows"> **Windows 10** | Desktop | ✅ Tested |
+| <img src="marketing/ubuntu-logo.svg" height="16" alt="Ubuntu"> **Ubuntu** | <img src="marketing/gnome-logo.svg" height="16" alt="GNOME"> GNOME (Wayland) | ✅ Tested |
+| <img src="marketing/fedora-logo.svg" height="16" alt="Fedora"> **Fedora** | <img src="marketing/gnome-logo.svg" height="16" alt="GNOME"> GNOME (Wayland) | ✅ Tested |
+| <img src="marketing/manjaro-logo.svg" height="16" alt="Manjaro"> **Manjaro Linux** | <img src="marketing/kde-logo.svg" height="16" alt="KDE"> KDE (Wayland) | ✅ Tested |
+| <img src="marketing/arch-logo.svg" height="16" alt="Arch Linux"> **Arch Linux** | <img src="marketing/hyprland-logo.svg" height="16" alt="Hyprland"> Hyprland (Wayland) | ✅ Tested |
+
+While it should work on other platforms, these are the primary tested environments.
 
 ## 📸 Screenshots
 
@@ -77,110 +119,7 @@ curl -fsSL https://insightreader.xyz/install.sh | bash
 
 </div>
 
-## 🗣️ Available Voices & Languages
 
-
-**100+ voices** Offline voices by [rhasspy/piper-voices](https://huggingface.co/rhasspy/piper-voices) repository:
-
-
-- **Low** - Fast, smaller models
-- **Medium** - Balanced quality and speed
-- **High** - Best quality, larger models
-
-Voices can be downloaded directly from the application interface.
-
-**100+ neural voices** across **30+ languages** by AWS Polly:
-
-- **Standard** - Traditional TTS
-- **Neural** - High-quality neural voices
-- **Generative** - Advanced AI-generated voices
-- **LongForm** - Optimized for long-form content
-
-
-### 🚀 Installation
-
-#### Quick Install (Recommended)
-
-**Linux/macOS:**
-```bash
-curl -fsSL https://insightreader.xyz/install.sh | bash
-```
-
-Or using `wget`:
-```bash
-wget -qO- https://insightreader.xyz/install.sh | bash
-```
-
-**Windows (PowerShell):**
-```powershell
-# Download and run the installation script
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/gabepsilva/insight-reader/master/install/install-windows.ps1" -OutFile "$env:TEMP\install-windows.ps1"
-& "$env:TEMP\install-windows.ps1"
-```
-
-Or run locally from the project directory:
-```powershell
-.\install\install-windows.ps1
-```
-
-#### Manual Installation
-
-1. **Prerequisites**:
-   - **Rust** (latest stable version)
-   - **System dependencies**:
-     - `python3` and `python3-venv` (for Piper TTS)
-     - `espeak-ng` (for text processing) - Linux/macOS only
-     - **Linux system tray icon support** (optional):
-       - `gtk3` (or `gtk4`)
-       - `libappindicator3` or `libayatana-appindicator` (for tray icon)
-       - **Note for GNOME users**: GNOME removed native system tray support. Install the "AppIndicator Support" extension from [GNOME Extensions](https://extensions.gnome.org/) to display tray icons.
-
-2. **Clone and build**:
-   ```bash
-   git clone https://github.com/gabepsilva/insight-reader.git
-   cd insight-reader
-   cargo build --release
-   ```
-
-3. **Install the binary**:
-
-   **Linux/macOS:**
-   ```bash
-   cp target/release/insight-reader ~/.local/bin/
-   ```
-
-   **Windows:**
-   ```powershell
-   New-Item -ItemType Directory -Path "$env:LOCALAPPDATA\insight-reader\bin" -Force
-   Copy-Item "target\release\insight-reader.exe" "$env:LOCALAPPDATA\insight-reader\bin\"
-   ```
-
-4. **Set up Piper TTS** (for local TTS):
-
-   **Linux/macOS:**
-   ```bash
-   mkdir -p ~/.local/share/insight-reader/venv
-   python3 -m venv ~/.local/share/insight-reader/venv
-   source ~/.local/share/insight-reader/venv/bin/activate
-   pip install piper-tts
-   ```
-
-   **Windows:**
-   ```powershell
-   python -m venv "$env:LOCALAPPDATA\insight-reader\venv"
-   & "$env:LOCALAPPDATA\insight-reader\venv\Scripts\Activate.ps1"
-   pip install piper-tts
-   ```
-
-5. **Download a Piper voice model** (optional - can be done from UI):
-   ```bash
-   # Download from https://huggingface.co/rhasspy/piper-voices
-   # Example: en_US-lessac-medium
-   ```
-   
-   Models are stored in:
-   - **Linux/macOS:** `~/.local/share/insight-reader/models/`
-   - **Windows:** `%LOCALAPPDATA%\insight-reader\models\`
 
 #### AWS Polly Setup (Optional)
 
@@ -222,13 +161,35 @@ To use AWS Polly, configure your AWS credentials:
 
 ## 🔧 Advanced Usage
 
+### System Tray & Hotkeys
 
-### Text Cleanup
+**System Tray:**
+- Access Insight Reader from the system tray (menu bar on macOS)
+- Quick actions: Read selected text, Show/Hide window, Quit
+- Displays configured hotkey in the menu
 
-Enable text cleanup in settings to:
-- Remove markdown formatting
-- Clean up special characters
-- Improve TTS quality for formatted text
+**Global Hotkeys:**
+- Configure custom hotkeys to trigger text reading
+- Works on Windows and macOS
+- Hotkeys are displayed in the tray menu for quick reference
+- **Note for Linux Wayland users**: Global hotkeys require compositor configuration (e.g., Hyprland key bindings)
+
+### OCR (Optical Character Recognition)
+
+Read text directly from images and screenshots:
+- **Windows**: Native Windows Media OCR API (fast and reliable)
+- **macOS**: Vision framework integration
+- **Linux**: EasyOCR support
+- Screenshot capture with region selection (Windows)
+- Preserves line breaks for better text structure
+
+## 📝 Logging
+
+Logs are written to:
+- **Stderr**: Real-time console output
+- **File**:
+  - **Linux/macOS**: `~/.local/share/insight-reader/logs/insight-reader-YYYY-MM-DD.log`
+  - **Windows**: `%LOCALAPPDATA%\insight-reader\logs\insight-reader-YYYY-MM-DD.log`
 
 ## 🛠️ Troubleshooting
 
@@ -254,9 +215,14 @@ Enable text cleanup in settings to:
   - Ensure you have `wl-clipboard` (Wayland) or `xclip`/`xsel` (X11) installed
 
 **"Screenshot capture not working"** (Windows)
-- Screenshot capture uses PowerShell with Windows Forms
-- Ensure PowerShell execution policy allows scripts: `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser`
+- Windows uses native Windows Media OCR API (no PowerShell required)
+- Ensure you have proper permissions for screen capture
 - Press Escape to cancel screenshot selection
+
+**"Global hotkeys not working"** (Linux Wayland)
+- Global hotkeys are not supported on Wayland compositors (except with manual configuration)
+- For Hyprland users: Configure key bindings in your Hyprland config file
+- The application will show a message if hotkeys are not supported on your platform
 
 **"Piper TTS not found"** (Windows)
 - Verify Python venv was created: `%LOCALAPPDATA%\insight-reader\venv\Scripts\piper.exe`
@@ -269,63 +235,53 @@ Enable text cleanup in settings to:
 - **GNOME users**: Install the "AppIndicator Support" extension from [GNOME Extensions](https://extensions.gnome.org/)
 - The application will continue to work without the tray icon if dependencies are missing
 
-```
-
 ## 🗺️ Roadmap
+<table style="border: none;">
+<tr>
+<td width="50%" style="border: none; vertical-align: top; font-size: 0.9em;">
 
-- [x] Multiple TTS providers (Piper, AWS Polly)
-- [x] Beautiful floating GUI with Iced
-- [x] Real-time waveform visualization
-- [x] Voice selection for both providers
-- [x] Voice download from UI
-- [x] Text cleanup support
-- [x] Cross-platform support (Linux, macOS, Windows)
-- [x] Settings persistence
-- [x] Windows support
-- [ ] Read Images
+- [<span style="color: green;">✓</span>] Multiple TTS providers (Piper, AWS Polly)
+- [<span style="color: green;">✓</span>] Real-time waveform visualization
+- [<span style="color: green;">✓</span>] Piper Voice download from UI
+- [<span style="color: green;">✓</span>] Cross-platform support (Linux, macOS, Windows)
+- [<span style="color: green;">✓</span>] Settings persistence to file
+- [<span style="color: green;">✓</span>] Windows & Mac support with native OCR
+- [<span style="color: green;">✓</span>] Linux OCR with EasyOCR 
+- [<span style="color: green;">✓</span>] System tray icon (Windows, macOS, Linux)
+- [<span style="color: green;">✓</span>] Global hotkeys (Windows, macOS)
+- [<span style="color: green;">✓</span>] OCR support for reading images (Windows, macOS, Linux)
+- [<span style="color: green;">✓</span>] Hotkey configuration UI
+- [<span style="color: green;">✓</span>] Beautiful floating GUI
+- [ ] Plugin system for custom Local TTS and OCR providers
+- [ ] Document mode (docx, pdf)
 - [ ] Batch text processing
 - [ ] Audio export functionality
-- [ ] Plugin system for custom providers
+- [ ] OCR Text formating and export functionality
+- [ ] Kokoro Voices
+
+
+</td>
+<td width="50%" style="border: none; vertical-align: top; font-size: 0.9em;">
+
+- [ ] Natural reading  
+- [ ] AI OCR enhancement  
+- [ ] Document mode (docx, pdf, md, google docs)  
+- [ ] Eleven Labs Voices  
+- [ ] Voice Cloning  
+- [ ] SSML tags creation and reading  
+- [<span style="color: green;">✓</span>] Natural Reading support
+
+</td>
+</tr>
+</table>
 
 ## 🤝 Contributing
 
 We welcome contributions! Please feel free to:
 - Report bugs and issues
 - Suggest new features
-- Submit pull requests
-- Add new TTS providers
 - Improve documentation
-- Add new voice packs
 - Design UI/UX improvements
-
-## 📊 Tested Platforms
-
-**Release tested:**
-
-| Platform | Desktop Environment / WM | Status |
-|----------|------------------------|--------|
-| 🪟 **Windows 11** | Desktop | ✅ Tested |
-| 🪟 **Windows 10** | Desktop | ✅ Tested |
-| 🐧 **Ubuntu** | 🖥️ GNOME (Wayland) | ✅ Tested |
-| 🐧 **Ubuntu** | 🎨 KDE (Wayland/X11) | ✅ Tested |
-| 🎩 **Fedora** | 🖥️ GNOME (Wayland) | ✅ Tested |
-| 🎩 **Fedora** | 🎨 KDE (Wayland/X11) | ✅ Tested |
-| 🏛️ **Arch Linux** | 🖥️ GNOME (Wayland) | ✅ Tested |
-| 🏛️ **Arch Linux** | 🎨 KDE (Wayland/X11) | ✅ Tested |
-| 🏛️ **Arch Linux** | 🌊 Hyprland (Wayland) | ✅ Tested |
-| 🍎 **macOS** | Apple Silicon (M1/M2/M3) | ✅ Tested |
-| 🍎 **macOS** | Intel | ✅ Tested |
-
-While it should work on other platforms, these are the primary tested environments.
-
-## 📝 Logging
-
-Logs are written to:
-- **Stderr**: Real-time console output
-- **File**:
-  - **Linux/macOS**: `~/.local/share/insight-reader/logs/insight-reader-YYYY-MM-DD.log`
-  - **Windows**: `%LOCALAPPDATA%\insight-reader\logs\insight-reader-YYYY-MM-DD.log`
-
 
 ## 🙏 Acknowledgments
 
@@ -334,8 +290,13 @@ Logs are written to:
 - AWS Polly integration via AWS SDK for Rust
 - Audio playback powered by [rodio](https://github.com/RustAudio/rodio)
 - Waveform visualization using [rustfft](https://github.com/ejmahler/rustfft)
+- Windows OCR via Windows Media OCR API
+- macOS OCR via Vision framework
+- Linux OCR via [EasyOCR](https://github.com/JaidedAI/EasyOCR)
 
 ---
+
+
 
 <div align="center">
 
