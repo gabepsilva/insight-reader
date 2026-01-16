@@ -215,6 +215,9 @@ pub fn subscription(app: &App) -> Subscription<Message> {
         Subscription::none()
     };
     
+    // Poll for IPC messages (bring-to-front requests from new instances)
+    let ipc_poll = time::every(Duration::from_millis(100)).map(|_| Message::IpcEventReceived);
+    
     // Subscribe to keyboard events when listening for hotkey input
     let keyboard_sub = if app.listening_for_hotkey {
         keyboard::listen().filter_map(|event| {
@@ -244,5 +247,5 @@ pub fn subscription(app: &App) -> Subscription<Message> {
         Subscription::none()
     };
     
-    Subscription::batch(vec![window_opened, window_closed, tick, tray_poll, hotkey_poll, keyboard_sub])
+    Subscription::batch(vec![window_opened, window_closed, tick, tray_poll, hotkey_poll, keyboard_sub, ipc_poll])
 }

@@ -249,18 +249,6 @@ pub fn load_text_cleanup_enabled() -> bool {
     }
 }
 
-/// Persist the Natural Reading enabled setting to disk.
-///
-/// Errors are logged and otherwise ignored.
-pub fn save_text_cleanup_enabled(enabled: bool) {
-    debug!(?enabled, "Saving Natural Reading enabled");
-    let mut cfg = load_or_default_config();
-    cfg.text_cleanup_enabled = Some(enabled);
-    if let Err(err) = save_raw_config(cfg) {
-        error!(error = ?err, "Failed to save config");
-    }
-}
-
 /// Load the persisted selected voice, returning None if not set or invalid.
 pub fn load_selected_voice() -> Option<String> {
     match load_raw_config() {

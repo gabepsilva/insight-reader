@@ -433,13 +433,6 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
             logging::set_verbosity(level);
             Task::none()
         }
-        Message::TextCleanupToggled(enabled) => {
-            info!(?enabled, "Natural Reading toggled");
-            app.text_cleanup_enabled = enabled;
-            // Persist the setting
-            config::save_text_cleanup_enabled(enabled);
-            Task::none()
-        }
         Message::WindowOpened(id) => {
             info!(?id, "Window opened event received");
             if app.main_window_id.is_none() {
@@ -1046,6 +1039,25 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
             info!("Quitting application from tray menu");
             iced::exit()
         }
+        Message::IpcEventReceived => {
+            // Poll for IPC events (bring-to-front requests from new instances)
+            if crate::system::try_recv_bring_to_front() {
+                info!("Bring-to-front request received from new instance");
+                // Show window if hidden, then focus it
+                if app.window_hidden || app.main_window_id.is_none() {
+                    info!("Reopening main window from IPC request");
+                    let (window_id, open_task) = open_main_window();
+                    app.main_window_id = Some(window_id);
+                    app.window_hidden = false;
+                    // After opening, the window will be focused via WindowOpened handler
+                    return open_task;
+                } else if let Some(window_id) = app.main_window_id {
+                    // Window is already open, just focus it
+                    return iced::window::gain_focus(window_id);
+                }
+            }
+            Task::none()
+        }
         Message::HotkeyPressed => {
             // Check if hotkey event actually occurred
             if let Some(ref mut hotkey_manager) = app.hotkey_manager {
@@ -1063,31 +1075,6 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                     return fetch_task;
                 }
             }
-            Task::none()
-        }
-        Message::HotkeyConfigChanged(config) => {
-            // Ignore if hotkeys are disabled due to Wayland/Hyprland
-            if app.hotkeys_disabled_wayland {
-                return Task::none();
-            }
-            
-            info!("Hotkey configuration changed");
-            app.hotkey_config = config.clone();
-            
-            // Update hotkey registration if enabled
-            if app.hotkey_enabled {
-                if let Some(ref mut hotkey_manager) = app.hotkey_manager {
-                    if let Err(e) = hotkey_manager.register(config) {
-                        error!(error = %e, "Failed to register new hotkey");
-                        app.error_message = Some(format!("Failed to register hotkey: {e}"));
-                    } else {
-                        info!("Hotkey re-registered successfully");
-                        app.error_message = None;
-                    }
-                }
-            }
-            
-            crate::config::save_hotkey_config(&app.hotkey_config, app.hotkey_enabled);
             Task::none()
         }
         Message::HotkeyToggled(enabled) => {
@@ -1174,7 +1161,6 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
             app.listening_for_hotkey = false;
             
             // Update the hotkey configuration
-            // This will trigger HotkeyConfigChanged internally
             app.hotkey_config = new_config.clone();
             
             // Update hotkey registration if enabled

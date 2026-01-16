@@ -44,7 +44,6 @@ pub enum Message {
     CloseSettings,
     ProviderSelected(TTSBackend),
     LogLevelSelected(LogLevel),
-    TextCleanupToggled(bool),
     WindowOpened(window::Id),
     WindowClosed(window::Id),
     TTSInitialized(Result<(), String>), // Result of async TTS initialization
@@ -84,11 +83,11 @@ pub enum Message {
     Quit, // Quit the application (from tray menu)
     TrayEventReceived, // Poll for tray events
     HotkeyPressed, // Global hotkey was pressed
-    HotkeyConfigChanged(crate::system::HotkeyConfig), // Hotkey configuration changed
     HotkeyToggled(bool), // Hotkey enabled/disabled
     StartListeningForHotkey, // Start listening for hotkey input
     StopListeningForHotkey, // Stop listening for hotkey input
     HotkeyCaptured(iced::keyboard::Key, iced::keyboard::Modifiers), // Hotkey combination captured
+    IpcEventReceived, // Poll for IPC events (bring-to-front requests)
 }
 
 /// Voice metadata from piper-voices repository

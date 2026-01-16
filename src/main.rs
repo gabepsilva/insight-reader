@@ -19,6 +19,19 @@ use iced::daemon;
 use tracing::info;
 
 fn main() -> iced::Result {
+    // Check for existing instance before doing anything else
+    let _instance_guard = match crate::system::try_lock() {
+        Ok(guard) => guard,
+        Err(crate::system::SingleInstanceError::LockFailed) => {
+            eprintln!("Error: Another instance of Insight Reader is already running.");
+            std::process::exit(1);
+        }
+        Err(e) => {
+            eprintln!("Error: Failed to check for existing instance: {e}");
+            std::process::exit(1);
+        }
+    };
+
     // Initialize logging first (before anything else)
     let log_config = logging::LoggingConfig {
         verbosity: config::load_log_level(),

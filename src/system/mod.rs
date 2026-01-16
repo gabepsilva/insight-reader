@@ -5,12 +5,15 @@ mod text_cleanup;
 mod screenshot;
 mod tray;
 mod hotkey;
+mod single_instance;
 
 pub use clipboard::{get_selected_text, copy_to_clipboard};
 pub use text_cleanup::cleanup_text;
 pub use screenshot::{capture_region, extract_text_from_image};
 pub use tray::{SystemTray, TrayEvent};
 pub use hotkey::{HotkeyManager, HotkeyConfig, format_hotkey_display};
+pub use single_instance::{try_lock, SingleInstanceError};
+pub use single_instance::try_recv_bring_to_front;
 
 /// Check if running on Wayland with Hyprland compositor
 #[cfg(target_os = "linux")]

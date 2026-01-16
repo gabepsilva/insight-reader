@@ -5,6 +5,7 @@
 </div>
 Insight Reader is a free, cross-platform text-to-speech application that reads text from your system clipboard selections, images, or screenshots. It features 100+ free, local voices via Piper (offline, privacy-focused, and unlimited usage), high-quality neural voices through AWS Polly, and native OCR support across Windows, macOS, and Linux. With seamless system integration, global hotkeys, and a floating interface, it transforms any text into natural speech instantly.
 
+<br/>
 <br/>  
 
 

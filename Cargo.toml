@@ -23,6 +23,7 @@ pulldown-cmark = "0.9"  # Markdown parser for stripping formatting
 md5 = "0.7"            # MD5 checksum verification for voice downloads
 arboard = { version = "3.2", features = ["wayland-data-control"] }  # Cross-platform clipboard library
 open = "5.0"            # Cross-platform URL/file opening
+fs2 = "0.4"             # Cross-platform file locking for single-instance enforcement
 tray-icon = { version = "0.13", default-features = false }  # System tray icon support (libxdo disabled - not needed for custom menu items)
 image = "0.25"         # Image decoding for tray icon
 global-hotkey = "0.5"  # Global hotkey support
