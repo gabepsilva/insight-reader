@@ -1,19 +1,11 @@
-# Insight Reader
-
 <div align="center">
-<img src="assets/logo.svg" height="128">
-<br/>  
-<br/>  
 
-
-![Rust](https://img.shields.io/badge/Rust-2021+-orange?style=for-the-badge&logo=rust)
-![Piper](https://img.shields.io/badge/Piper-TTS-green?style=for-the-badge)
-![AWS Polly](https://img.shields.io/badge/AWS-Polly-yellow?style=for-the-badge)
-
-
-*High-quality text-to-speech with beautiful GUI, multiple Text-to-Speech providers, and cross-platform support*
+<h1><img src="assets/logo.svg" height="64" alt="Insight Reader" style="vertical-align: middle;"> Insight Reader</h1>
 
 </div>
+Insight Reader is a free, cross-platform text-to-speech application that reads text from your system clipboard selections, images, or screenshots. It features 100+ free, local voices via Piper (offline, privacy-focused, and unlimited usage), high-quality neural voices through AWS Polly, and native OCR support across Windows, macOS, and Linux. With seamless system integration, global hotkeys, and a floating interface, it transforms any text into natural speech instantly.
+
+<br/>  
 
 
 <div align="center">
@@ -22,13 +14,26 @@
 <img src="assets/marketing/macos-logo.svg" height="64" alt="macOS">
 <img src="assets/marketing/linux-logo.svg" height="64" alt="Linux">
 
+![Rust](https://img.shields.io/badge/Rust-2021+-orange?style=for-the-badge&logo=rust)
+![Piper](https://img.shields.io/badge/Piper-TTS-green?style=for-the-badge)
+![AWS Polly](https://img.shields.io/badge/AWS-Polly-yellow?style=for-the-badge)
+</div>
+
+
+
+
+
+<div align="center">
+
+
+
 </div>
 
 ## 🚀 Easy installation
 
 ### MacOs and Linux
 
-Open **Terminal** and run:
+Open <img src="assets/marketing/terminal.svg" height="16" alt="Terminal"> **Terminal** and run:
 
 ```bash
 curl -fsSL https://insightreader.xyz/install.sh | bash
@@ -36,7 +41,7 @@ curl -fsSL https://insightreader.xyz/install.sh | bash
 
 ### Windows
 
-Open **PowerShell** and run:
+Open <img src="assets/marketing/PowerShell.svg" height="16" alt="PowerShell"> **PowerShell** and run:
 
 ```powershell
 iwr https://insightreader.xyz/install.ps1 | iex
@@ -124,7 +129,7 @@ While it should work on other platforms, these are the primary tested environmen
 *Capture screenshots and extract text using native OCR (Windows Media OCR, macOS Vision, Linux EasyOCR)*
 
 ### Settings Window
-<img src="assets/screenshots/configurations.png" alt="Settings Window" width="600">
+<img src="assets/screenshots/configurations.png" alt="Settings Window" width="350">
 
 *Comprehensive settings with provider selection, voice management, and configuration options*
 
@@ -334,8 +339,6 @@ We welcome contributions! Please feel free to:
 
 
 <div align="center">
-
-**Made with ❤️ for the open-source community**
 
 [GitHub](https://github.com/gabepsilva/insight-reader) • [Issues](https://github.com/gabepsilva/insight-reader/issues) • [Releases](https://github.com/gabepsilva/insight-reader/releases)
 
