@@ -91,6 +91,42 @@ check_and_install_dependencies() {
         fi
     fi
     
+    # Check build dependencies (needed for NumPy/EasyOCR)
+    # Check for gcc (C compiler)
+    if ! command_exists gcc; then
+        missing_deps+=("gcc")
+        log_warn "gcc not found (required for building NumPy/EasyOCR)"
+    else
+        log_success "gcc found"
+    fi
+    
+    # Check for g++ (C++ compiler) - NumPy also needs C++ compiler
+    if ! command_exists g++; then
+        missing_deps+=("g++")
+        log_warn "g++ not found (required for building NumPy/EasyOCR)"
+    else
+        log_success "g++ found"
+    fi
+    
+    # Check for python3-devel (Python development headers)
+    # Only check if python3 is available
+    if command_exists python3; then
+        local python_include
+        python_include=$(python3 -c "import sysconfig; print(sysconfig.get_path('include'))" 2>/dev/null || echo "")
+        if [ -z "$python_include" ] || [ ! -d "$python_include" ]; then
+            missing_deps+=("python3-devel")
+            log_warn "python3-devel not found (required for building Python C extensions)"
+        else
+            # Also check if Python.h exists
+            if [ ! -f "$python_include/Python.h" ]; then
+                missing_deps+=("python3-devel")
+                log_warn "Python.h not found (python3-devel may be incomplete)"
+            else
+                log_success "python3-devel found"
+            fi
+        fi
+    fi
+    
     # If all dependencies are present, return
     if [ ${#missing_deps[@]} -eq 0 ]; then
         log_success "All required dependencies are installed"
@@ -117,6 +153,9 @@ check_and_install_dependencies() {
             if command_exists pacman; then
                 [ "$python_missing" = true ] && packages_to_install+=("python")
                 [[ " ${missing_deps[@]} " =~ " espeak-ng " ]] && packages_to_install+=("espeak-ng")
+                [[ " ${missing_deps[@]} " =~ " gcc " ]] && packages_to_install+=("gcc")
+                [[ " ${missing_deps[@]} " =~ " g++ " ]] && packages_to_install+=("gcc")  # gcc package includes g++
+                [[ " ${missing_deps[@]} " =~ " python3-devel " ]] && packages_to_install+=("python")
                 if [ ${#packages_to_install[@]} -gt 0 ]; then
                     log_info "Installing packages via pacman: ${packages_to_install[*]}"
                     sudo pacman -S --needed --noconfirm "${packages_to_install[@]}"
@@ -131,6 +170,13 @@ check_and_install_dependencies() {
                 [ "$python_missing" = true ] && packages_to_install+=("python3" "python3-venv")
                 [ "$venv_missing" = true ] && packages_to_install+=("python3-venv")
                 [[ " ${missing_deps[@]} " =~ " espeak-ng " ]] && packages_to_install+=("espeak-ng")
+                [[ " ${missing_deps[@]} " =~ " gcc " ]] && packages_to_install+=("gcc" "g++")
+                [[ " ${missing_deps[@]} " =~ " g++ " ]] && packages_to_install+=("g++")
+                [[ " ${missing_deps[@]} " =~ " python3-devel " ]] && packages_to_install+=("python3-dev")
+                # Install build-essential if any build tools are needed
+                if [[ " ${missing_deps[@]} " =~ " gcc " ]] || [[ " ${missing_deps[@]} " =~ " g++ " ]]; then
+                    packages_to_install+=("build-essential")
+                fi
                 # Remove duplicates
                 IFS=" " read -r -a packages_to_install <<< "$(printf '%s\n' "${packages_to_install[@]}" | sort -u | tr '\n' ' ')"
                 if [ ${#packages_to_install[@]} -gt 0 ]; then
@@ -147,6 +193,13 @@ check_and_install_dependencies() {
             if command_exists dnf; then
                 [ "$python_missing" = true ] && packages_to_install+=("python3")
                 [[ " ${missing_deps[@]} " =~ " espeak-ng " ]] && packages_to_install+=("espeak-ng")
+                [[ " ${missing_deps[@]} " =~ " gcc " ]] && packages_to_install+=("gcc")
+                [[ " ${missing_deps[@]} " =~ " g++ " ]] && packages_to_install+=("gcc-c++")
+                [[ " ${missing_deps[@]} " =~ " python3-devel " ]] && packages_to_install+=("python3-devel")
+                # Install build tools if any build dependencies are needed
+                if [[ " ${missing_deps[@]} " =~ " gcc " ]] || [[ " ${missing_deps[@]} " =~ " g++ " ]] || [[ " ${missing_deps[@]} " =~ " python3-devel " ]]; then
+                    packages_to_install+=("redhat-rpm-config" "meson" "ninja-build")
+                fi
                 if [ ${#packages_to_install[@]} -gt 0 ]; then
                     log_info "Installing packages via dnf: ${packages_to_install[*]}"
                     sudo dnf install -y "${packages_to_install[@]}"
@@ -154,6 +207,12 @@ check_and_install_dependencies() {
             elif command_exists yum; then
                 [ "$python_missing" = true ] && packages_to_install+=("python3")
                 [[ " ${missing_deps[@]} " =~ " espeak-ng " ]] && packages_to_install+=("espeak-ng")
+                [[ " ${missing_deps[@]} " =~ " gcc " ]] && packages_to_install+=("gcc")
+                [[ " ${missing_deps[@]} " =~ " g++ " ]] && packages_to_install+=("gcc-c++")
+                [[ " ${missing_deps[@]} " =~ " python3-devel " ]] && packages_to_install+=("python3-devel")
+                if [[ " ${missing_deps[@]} " =~ " gcc " ]] || [[ " ${missing_deps[@]} " =~ " g++ " ]] || [[ " ${missing_deps[@]} " =~ " python3-devel " ]]; then
+                    packages_to_install+=("redhat-rpm-config")
+                fi
                 if [ ${#packages_to_install[@]} -gt 0 ]; then
                     log_info "Installing packages via yum: ${packages_to_install[*]}"
                     sudo yum install -y "${packages_to_install[@]}"
@@ -167,6 +226,9 @@ check_and_install_dependencies() {
             if command_exists zypper; then
                 [ "$python_missing" = true ] && packages_to_install+=("python3")
                 [[ " ${missing_deps[@]} " =~ " espeak-ng " ]] && packages_to_install+=("espeak-ng")
+                [[ " ${missing_deps[@]} " =~ " gcc " ]] && packages_to_install+=("gcc")
+                [[ " ${missing_deps[@]} " =~ " g++ " ]] && packages_to_install+=("gcc-c++")
+                [[ " ${missing_deps[@]} " =~ " python3-devel " ]] && packages_to_install+=("python3-devel")
                 if [ ${#packages_to_install[@]} -gt 0 ]; then
                     log_info "Installing packages via zypper: ${packages_to_install[*]}"
                     sudo zypper install -y "${packages_to_install[@]}"
@@ -180,6 +242,12 @@ check_and_install_dependencies() {
             if command_exists apk; then
                 [ "$python_missing" = true ] && packages_to_install+=("python3")
                 [[ " ${missing_deps[@]} " =~ " espeak-ng " ]] && packages_to_install+=("espeak-ng")
+                [[ " ${missing_deps[@]} " =~ " gcc " ]] && packages_to_install+=("gcc" "musl-dev")
+                [[ " ${missing_deps[@]} " =~ " g++ " ]] && packages_to_install+=("g++")
+                [[ " ${missing_deps[@]} " =~ " python3-devel " ]] && packages_to_install+=("python3-dev")
+                if [[ " ${missing_deps[@]} " =~ " gcc " ]] || [[ " ${missing_deps[@]} " =~ " g++ " ]]; then
+                    packages_to_install+=("make")
+                fi
                 if [ ${#packages_to_install[@]} -gt 0 ]; then
                     log_info "Installing packages via apk: ${packages_to_install[*]}"
                     sudo apk add --no-cache "${packages_to_install[@]}"
@@ -194,6 +262,9 @@ check_and_install_dependencies() {
                 [ "$python_missing" = true ] && packages_to_install+=("python3")
                 [[ " ${missing_deps[@]} " =~ " espeak-ng " ]] && packages_to_install+=("espeak-ng")
                 [[ " ${missing_deps[@]} " =~ " tesseract " ]] && packages_to_install+=("tesseract" "tesseract-ocr-data")
+                [[ " ${missing_deps[@]} " =~ " gcc " ]] && packages_to_install+=("gcc")
+                [[ " ${missing_deps[@]} " =~ " g++ " ]] && packages_to_install+=("gcc")
+                [[ " ${missing_deps[@]} " =~ " python3-devel " ]] && packages_to_install+=("python3-devel")
                 if [ ${#packages_to_install[@]} -gt 0 ]; then
                     log_info "Installing packages via xbps-install: ${packages_to_install[*]}"
                     sudo xbps-install -S -y "${packages_to_install[@]}"
@@ -230,6 +301,23 @@ check_and_install_dependencies() {
     
     if ! command_exists espeak-ng; then
         log_warn "espeak-ng installation may have failed. Piper may not work correctly."
+    fi
+    
+    # Verify build dependencies
+    if ! command_exists gcc; then
+        log_warn "gcc installation may have failed"
+    fi
+    
+    if ! command_exists g++; then
+        log_warn "g++ installation may have failed"
+    fi
+    
+    if command_exists python3; then
+        local python_include
+        python_include=$(python3 -c "import sysconfig; print(sysconfig.get_path('include'))" 2>/dev/null || echo "")
+        if [ -z "$python_include" ] || [ ! -d "$python_include" ] || [ ! -f "$python_include/Python.h" ]; then
+            log_warn "python3-devel installation may have failed"
+        fi
     fi
     
     # EasyOCR is now installed in the venv (see install_piper in common-bash.sh)
