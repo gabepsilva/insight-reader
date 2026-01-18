@@ -22,6 +22,7 @@ use tracing::info;
 fn main() -> iced::Result {
     // Check if running in CLI mode (properly detect CLI commands)
     if cli::is_cli_mode() {
+        cli::init_logging();
         cli::run();
         return Ok(());
     }

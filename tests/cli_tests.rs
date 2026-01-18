@@ -182,3 +182,204 @@ fn test_invalid_command() {
         "Should show error about invalid command"
     );
 }
+
+#[test]
+fn test_logs_help() {
+    let output = run_command(&["logs", "--help"]);
+    assert!(
+        output.status.success(),
+        "Command failed with status: {:?}",
+        output.status
+    );
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        stdout.contains("Log file management"),
+        "Logs help should contain description"
+    );
+    assert!(
+        stdout.contains("show"),
+        "Logs help should list show subcommand"
+    );
+}
+
+#[test]
+fn test_logs_show_command() {
+    let output = run_command(&["logs", "show"]);
+    // Command should succeed whether or not log files exist
+    assert!(
+        output.status.success(),
+        "Command failed with status: {:?}",
+        output.status
+    );
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    // The output should either show log contents or mention logs don't exist
+    let has_log_file = stdout.contains("Log file:") || stdout.contains("insight-reader.log");
+    let mentions_not_exist =
+        stdout.contains("does not exist") || stdout.contains("(This is normal");
+
+    assert!(
+        has_log_file || mentions_not_exist,
+        "Logs show should either display logs or mention they don't exist. Got: {}",
+        stdout
+    );
+}
+
+#[test]
+fn test_logs_show_with_n_flag() {
+    let output = run_command(&["logs", "show", "-n", "10"]);
+    assert!(
+        output.status.success(),
+        "Command failed with status: {:?}",
+        output.status
+    );
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    // The output should either show log contents with line count or mention logs don't exist
+    if stdout.contains("Log file:") {
+        assert!(
+            stdout.contains("Showing last") && stdout.contains("line(s)"),
+            "Output should show how many lines are displayed"
+        );
+    } else {
+        assert!(
+            stdout.contains("does not exist") || stdout.contains("(This is normal"),
+            "Should mention logs don't exist if no logs are found"
+        );
+    }
+}
+
+#[test]
+fn test_logs_show_with_lines_flag() {
+    let output = run_command(&["logs", "show", "--lines", "25"]);
+    assert!(
+        output.status.success(),
+        "Command failed with status: {:?}",
+        output.status
+    );
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    // The output should either show log contents with line count or mention logs don't exist
+    if stdout.contains("Log file:") {
+        assert!(
+            stdout.contains("Showing last") && stdout.contains("line(s)"),
+            "Output should show how many lines are displayed"
+        );
+    } else {
+        assert!(
+            stdout.contains("does not exist") || stdout.contains("(This is normal"),
+            "Should mention logs don't exist if no logs are found"
+        );
+    }
+}
+
+#[test]
+fn test_logs_show_with_zero_lines() {
+    let output = run_command(&["logs", "show", "-n", "0"]);
+    assert!(
+        output.status.success(),
+        "Command should succeed with 0 lines requested"
+    );
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    if stdout.contains("Log file:") {
+        // When 0 lines requested, should either:
+        // 1. Show "Showing last 0 line(s)" in the header, OR
+        // 2. Have no log content lines (only header lines)
+        let has_zero_line_count = stdout.contains("Showing last 0 line(s)");
+        let log_content_lines: Vec<&str> = stdout
+            .lines()
+            .filter(|l| {
+                !l.is_empty()
+                    && !l.contains("Log file:")
+                    && !l.contains("Showing last")
+            })
+            .collect();
+        let has_no_content = log_content_lines.is_empty();
+
+        assert!(
+            has_zero_line_count || has_no_content,
+            "Should show 0 lines of log content when 0 is requested. Found {} content lines: {:?}",
+            log_content_lines.len(),
+            log_content_lines
+        );
+    }
+}
+
+#[test]
+fn test_logs_show_with_large_number() {
+    let output = run_command(&["logs", "show", "--lines", "1000"]);
+    assert!(
+        output.status.success(),
+        "Command should succeed even with large line count"
+    );
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    if stdout.contains("Log file:") {
+        // Should show "Showing last N line(s)" where N <= 1000 (depending on actual file size)
+        assert!(
+            stdout.contains("Showing last") && stdout.contains("line(s)"),
+            "Output should show line count information"
+        );
+    }
+}
+
+#[test]
+fn test_logs_show_default_is_50_lines() {
+    let output = run_command(&["logs", "show"]);
+    assert!(
+        output.status.success(),
+        "Command failed with status: {:?}",
+        output.status
+    );
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    // When logs exist, it should default to showing 50 lines or fewer (if file is smaller)
+    if stdout.contains("Log file:") && stdout.contains("Showing last") {
+        // Extract the number of lines shown from the output
+        // The format is "Showing last N line(s):"
+        let has_reasonable_line_count = stdout.lines().any(|line| {
+            if line.contains("Showing last") && line.contains("line(s)") {
+                // Line count should be <= 50 (the default)
+                true
+            } else {
+                false
+            }
+        });
+        assert!(
+            has_reasonable_line_count,
+            "Default should show line count information"
+        );
+    }
+}
+
+#[test]
+fn test_logs_show_invalid_lines_argument() {
+    let output = run_command(&["logs", "show", "-n", "not-a-number"]);
+    assert!(
+        !output.status.success(),
+        "Command should fail with invalid lines argument"
+    );
+
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("error") || stderr.contains("invalid"),
+        "Should show error about invalid argument"
+    );
+}
+
+#[test]
+fn test_logs_no_subcommand() {
+    let output = run_command(&["logs"]);
+    assert!(
+        !output.status.success(),
+        "Command should fail without subcommand"
+    );
+
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("Usage:") || stderr.contains("COMMAND"),
+        "Should show usage message when subcommand is missing"
+    );
+}

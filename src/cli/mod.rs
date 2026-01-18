@@ -17,6 +17,11 @@ pub enum Commands {
         #[command(subcommand)]
         action: ConfigAction,
     },
+    /// Log file management
+    Logs {
+        #[command(subcommand)]
+        action: LogsAction,
+    },
 }
 
 #[derive(Subcommand)]
@@ -25,16 +30,26 @@ pub enum ConfigAction {
     Show,
 }
 
-/// Initialize logging for CLI mode (stderr only, respects RUST_LOG)
+#[derive(Subcommand)]
+pub enum LogsAction {
+    /// Show the latest log file (last 50 lines)
+    Show {
+        /// Number of lines to show (default: 50)
+        #[arg(short = 'n', long, default_value = "50")]
+        lines: usize,
+    },
+}
+
+/// Initialize logging for CLI mode (file only, respects RUST_LOG)
 pub fn init_logging() {
     use crate::config;
     use crate::logging;
 
     let log_config = logging::LoggingConfig {
         verbosity: config::load_log_level(),
-        log_to_stderr: true,
-        log_to_file: false, // CLI doesn't need file logging
-        log_dir: None,
+        log_to_stderr: false, // CLI only logs to file
+        log_to_file: true,
+        log_dir: None, // Uses default log directory
     };
 
     // Ignore errors - CLI can work without logging
@@ -48,7 +63,7 @@ pub fn init_logging() {
 /// help/errors for invalid arguments. The GUI mode only runs when no
 /// arguments are provided.
 pub fn is_cli_mode() -> bool {
-    std::env::args().skip(1).next().is_some()
+    std::env::args().nth(1).is_some()
 }
 
 /// Run the CLI interface
@@ -62,9 +77,8 @@ pub fn run() {
             println!("No command specified. Use --help for available commands.");
             std::process::exit(0);
         }
-        Some(Commands::Config { action }) => match action {
-            ConfigAction::Show => show_config(),
-        },
+        Some(Commands::Config { action: ConfigAction::Show }) => show_config(),
+        Some(Commands::Logs { action: LogsAction::Show { lines } }) => show_logs(lines),
     }
 }
 
@@ -110,4 +124,75 @@ fn show_config() {
     println!("Config file: {}", config_path.display());
     println!();
     println!("{}", contents);
+}
+
+fn show_logs(lines: usize) {
+    use crate::logging;
+    use std::fs;
+    use std::io::{BufRead, BufReader};
+
+    let log_dir = logging::default_log_dir();
+
+    if !log_dir.exists() {
+        println!("Log directory does not exist: {}", log_dir.display());
+        println!("(This is normal if no logging has occurred yet)");
+        return;
+    }
+
+    // Find the latest log file (daily rotation creates files like insight-reader.log, insight-reader.log.2026-01-06, etc.)
+    let latest_log = fs::read_dir(&log_dir)
+        .unwrap_or_else(|e| {
+            eprintln!(
+                "Error reading log directory {}: {}",
+                log_dir.display(),
+                e
+            );
+            std::process::exit(1);
+        })
+        .filter_map(|entry| {
+            let entry = entry.ok()?;
+            let path = entry.path();
+            let file_name = path.file_name()?.to_string_lossy();
+            if path.is_file() && file_name.starts_with("insight-reader.log") {
+                let modified = entry.metadata().ok()?.modified().ok()?;
+                Some((path, modified))
+            } else {
+                None
+            }
+        })
+        .max_by_key(|(_, modified)| *modified)
+        .map(|(path, _)| path);
+
+    let Some(latest_log) = latest_log else {
+        println!("No log files found in: {}", log_dir.display());
+        return;
+    };
+
+    // Read the file and get the last N lines
+    let file = fs::File::open(&latest_log).unwrap_or_else(|e| {
+        eprintln!("Error opening log file: {}", e);
+        std::process::exit(1);
+    });
+
+    let reader = BufReader::new(file);
+    let all_lines: Vec<String> = reader
+        .lines()
+        .collect::<Result<_, _>>()
+        .unwrap_or_else(|e| {
+            eprintln!("Error reading log file: {}", e);
+            std::process::exit(1);
+        });
+
+    let start = all_lines.len().saturating_sub(lines);
+    let lines_to_show = &all_lines[start..];
+
+    // Print log lines first
+    for line in lines_to_show {
+        println!("{}", line);
+    }
+
+    // Print header information last
+    println!();
+    println!("Log file: {}", latest_log.display());
+    println!("Showing last {} line(s):", lines_to_show.len());
 }
