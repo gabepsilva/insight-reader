@@ -1,12 +1,12 @@
 //! Windows system tray implementation
 
+use crate::system::{format_hotkey_display, HotkeyConfig};
 use std::sync::mpsc;
-use tray_icon::{
-    menu::{Menu, MenuItem, MenuEvent, PredefinedMenuItem},
-    TrayIconBuilder, TrayIcon,
-};
 use tracing::info;
-use crate::system::{HotkeyConfig, format_hotkey_display};
+use tray_icon::{
+    menu::{Menu, MenuEvent, MenuItem, PredefinedMenuItem},
+    TrayIcon, TrayIconBuilder,
+};
 
 // Embedded logo asset - using ICO file for Windows
 const LOGO_ICO: &[u8] = include_bytes!("../../../assets/logo.ico");
@@ -30,7 +30,7 @@ impl SystemTray {
     /// Create and initialize the system tray icon
     pub fn new(hotkey_config: Option<&HotkeyConfig>) -> Result<Self, Box<dyn std::error::Error>> {
         let (sender, receiver) = mpsc::channel();
-        
+
         // Format hotkey display for menu item
         let read_selected_label = if let Some(config) = hotkey_config {
             let hotkey_display = format_hotkey_display(config);
@@ -38,19 +38,19 @@ impl SystemTray {
         } else {
             "Read Selected".to_string()
         };
-        
+
         // Create menu items
         let read_selected_item = MenuItem::new(&read_selected_label, true, None);
         let show_item = MenuItem::new("Show Window", true, None);
         let hide_item = MenuItem::new("Hide Window", true, None);
         let quit_item = MenuItem::new("Quit", true, None);
-        
+
         // Store menu item IDs
         let read_selected_item_id = read_selected_item.id();
         let show_item_id = show_item.id();
         let hide_item_id = hide_item.id();
         let quit_item_id = quit_item.id();
-        
+
         // Create menu - Read Selected first, then separator, then other items, then separator before Quit
         let separator = PredefinedMenuItem::separator();
         let menu = Menu::new();
@@ -60,13 +60,13 @@ impl SystemTray {
         menu.append(&hide_item)?;
         menu.append(&separator)?;
         menu.append(&quit_item)?;
-        
+
         // Load and resize the app logo for the tray icon
         // Windows tray icons are typically 16x16 (standard) or 32x32 (high DPI)
         let (rgba_data, width, height) = load_tray_icon_from_logo()?;
         let icon = tray_icon::Icon::from_rgba(rgba_data, width, height)
             .map_err(|e| format!("Failed to create icon: {e}"))?;
-        
+
         // Set up menu event handler before creating the tray icon
         let sender_clone = sender.clone();
         let show_id = show_item_id.clone();
@@ -81,12 +81,12 @@ impl SystemTray {
                 id if id == quit_id => Some(TrayEvent::Quit),
                 _ => None,
             };
-            
+
             if let Some(evt) = event_to_send {
                 let _ = sender_clone.send(evt);
             }
         }));
-        
+
         // Create tray icon
         let tray_icon = TrayIconBuilder::new()
             .with_menu(Box::new(menu))
@@ -94,15 +94,15 @@ impl SystemTray {
             .with_icon(icon)
             .build()
             .map_err(|e| format!("Failed to create tray icon: {e}"))?;
-        
+
         info!("System tray icon created successfully");
-        
+
         Ok(Self {
             _tray_icon: tray_icon,
             receiver,
         })
     }
-    
+
     /// Try to receive a tray event (non-blocking)
     pub fn try_recv(&self) -> Option<TrayEvent> {
         self.receiver.try_recv().ok()
@@ -116,7 +116,7 @@ fn load_tray_icon_from_logo() -> Result<(Vec<u8>, u32, u32), Box<dyn std::error:
     let img = image::load_from_memory(LOGO_ICO)
         .map_err(|e| format!("Failed to decode logo ICO: {e}"))?
         .to_rgba8();
-    
+
     // Resize to 32x32 for high DPI displays (Windows will scale down as needed)
     const TARGET_SIZE: u32 = 32;
     let rgba_data = image::imageops::resize(
@@ -126,6 +126,6 @@ fn load_tray_icon_from_logo() -> Result<(Vec<u8>, u32, u32), Box<dyn std::error:
         image::imageops::FilterType::Lanczos3,
     )
     .into_raw();
-    
+
     Ok((rgba_data, TARGET_SIZE, TARGET_SIZE))
 }

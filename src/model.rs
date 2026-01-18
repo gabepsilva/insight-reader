@@ -1,9 +1,9 @@
 //! Domain model for the application state
 
-use std::collections::HashMap;
-use iced::window;
-use crate::providers::TTSProvider;
 use crate::config;
+use crate::providers::TTSProvider;
+use iced::window;
+use std::collections::HashMap;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TTSBackend {
@@ -49,45 +49,45 @@ pub enum Message {
     TTSInitialized(Result<(), String>), // Result of async TTS initialization
     SelectedTextFetched(Option<String>), // Result of async text selection fetch
     TextCleanupResponse(Result<String, String>), // Result of Natural Reading API call
-    StartDrag, // Begin dragging the window
-    VoiceSelected(String), // Voice key selected (e.g., "en_US-lessac-medium")
-    VoiceDownloadRequested(String), // Voice key to download
+    StartDrag,                          // Begin dragging the window
+    VoiceSelected(String),              // Voice key selected (e.g., "en_US-lessac-medium")
+    VoiceDownloadRequested(String),     // Voice key to download
     VoiceDownloaded(Result<String, String>), // Download completion (voice key or error)
     VoicesJsonLoaded(Result<HashMap<String, VoiceInfo>, String>), // voices.json loaded
     PollyVoicesLoaded(Result<HashMap<String, PollyVoiceInfo>, String>), // AWS Polly voices loaded
-    OpenVoiceSelection(String), // Open voice selection window for language code
-    CloseVoiceSelection, // Close voice selection window
-    OpenPollyInfo, // Open AWS Polly pricing info modal
-    ClosePollyInfo, // Close AWS Polly pricing info modal
-    OpenPollyPricingUrl, // Open AWS Polly pricing URL in browser
-    OCRBackendSelected(OCRBackend), // OCR backend selected
-    OpenOCRInfo, // Open Better OCR info modal
-    CloseOCRInfo, // Close Better OCR info modal
-    OpenTextCleanupInfo, // Open Natural Reading info modal
-    CloseTextCleanupInfo, // Close Natural Reading info modal
-    ScreenshotRequested, // User clicked screenshot button
+    OpenVoiceSelection(String),         // Open voice selection window for language code
+    CloseVoiceSelection,                // Close voice selection window
+    OpenPollyInfo,                      // Open AWS Polly pricing info modal
+    ClosePollyInfo,                     // Close AWS Polly pricing info modal
+    OpenPollyPricingUrl,                // Open AWS Polly pricing URL in browser
+    OCRBackendSelected(OCRBackend),     // OCR backend selected
+    OpenOCRInfo,                        // Open Better OCR info modal
+    CloseOCRInfo,                       // Close Better OCR info modal
+    OpenTextCleanupInfo,                // Open Natural Reading info modal
+    CloseTextCleanupInfo,               // Close Natural Reading info modal
+    ScreenshotRequested,                // User clicked screenshot button
     ScreenshotCaptured(Result<String, String>), // Screenshot result (file path or error)
     ScreenshotTextExtracted(Result<String, String>), // Text extracted from screenshot (text or error)
     #[allow(dead_code)] // Message variant - matched but not directly constructed
     OpenScreenshotViewer, // Open screenshot viewer window
-    CloseScreenshotViewer, // Close screenshot viewer window
+    CloseScreenshotViewer,                           // Close screenshot viewer window
     #[allow(dead_code)] // Message variant - matched but not directly constructed
     OpenExtractedTextDialog, // Open extracted text dialog window
-    CloseExtractedTextDialog, // Close extracted text dialog window
-    CopyExtractedTextToClipboard, // Copy extracted text to clipboard
+    CloseExtractedTextDialog,                        // Close extracted text dialog window
+    CopyExtractedTextToClipboard,                    // Copy extracted text to clipboard
     ExtractedTextEditorAction(iced::widget::text_editor::Action), // Text editor action (edit, paste, etc.)
-    ReadExtractedText, // Send extracted text to TTS and start reading
-    ShowWindow, // Show the main window (from tray menu)
-    HideWindow, // Hide the main window (from tray menu)
-    ReadSelected, // Read currently selected text (from tray menu)
-    Quit, // Quit the application (from tray menu)
-    TrayEventReceived, // Poll for tray events
-    HotkeyPressed, // Global hotkey was pressed
-    HotkeyToggled(bool), // Hotkey enabled/disabled
+    ReadExtractedText,       // Send extracted text to TTS and start reading
+    ShowWindow,              // Show the main window (from tray menu)
+    HideWindow,              // Hide the main window (from tray menu)
+    ReadSelected,            // Read currently selected text (from tray menu)
+    Quit,                    // Quit the application (from tray menu)
+    TrayEventReceived,       // Poll for tray events
+    HotkeyPressed,           // Global hotkey was pressed
+    HotkeyToggled(bool),     // Hotkey enabled/disabled
     StartListeningForHotkey, // Start listening for hotkey input
-    StopListeningForHotkey, // Stop listening for hotkey input
+    StopListeningForHotkey,  // Stop listening for hotkey input
     HotkeyCaptured(iced::keyboard::Key, iced::keyboard::Modifiers), // Hotkey combination captured
-    IpcEventReceived, // Poll for IPC events (bring-to-front requests)
+    IpcEventReceived,        // Poll for IPC events (bring-to-front requests)
 }
 
 /// Voice metadata from piper-voices repository

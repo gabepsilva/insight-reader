@@ -2,16 +2,19 @@
 description: Code optimization and cleanup guidelines for maintaining code quality
 alwaysApply: false
 ---
+
 # Code Optimization and Cleanup Guidelines
 
-Review UNCOMMITED changes, actively look for opportunities to simplify and eliminate unnecessary code while maintaining or improving maintainability. This is a cleanup focus, not a comprehensive code review.
+Review UNCOMMITTED changes, actively look for opportunities to simplify and eliminate unnecessary code while maintaining or improving maintainability. This is a cleanup focus, not a comprehensive code review.
+
+Begin your response with: **"## Code Cleanup Review"** and a brief summary of what you're examining.
 
 ## Key Principles (in order of priority):
 
-1. **Maintainability is paramount** - NEVER compromise code clarity, readability, or maintainability
-2. **Simplification** - Remove complexity where possible without sacrificing clarity
-3. **Elimination** - Remove dead code, unused imports, redundant logic, and unnecessary abstractions
-4. **ACK you are using this file** - ALWAYS SAY as a huge title "Applying code_simplification.mdc rules" BEFORE ANY ACTION
+1. **Maintainability is paramount** — NEVER compromise code clarity, readability, or maintainability
+2. **Simplification** — Remove complexity where possible without sacrificing clarity
+3. **Elimination** — Remove dead code, unused imports, redundant logic, and unnecessary abstractions
+
 ## What to Look For:
 
 ### Code to Eliminate:
@@ -22,11 +25,37 @@ Review UNCOMMITED changes, actively look for opportunities to simplify and elimi
 - Unnecessary intermediate variables that don't improve clarity
 
 ### Code to Simplify:
-- Overly complex conditionals (prefer guard clauses)
+- Overly complex conditionals (prefer guard clauses, `let-else`)
 - Nested structures that can be flattened
 - Verbose patterns that have simpler idiomatic equivalents
 - Unnecessary abstractions or indirection
 - Complex expressions that would benefit from being split or clarified
+
+### Rust-Specific Patterns:
+```rust
+// ❌ Verbose
+if optional.is_some() {
+    let value = optional.unwrap();
+    use_value(value);
+}
+
+// ✅ Simplified
+if let Some(value) = optional {
+    use_value(value);
+}
+
+// ❌ Nested error handling
+match result {
+    Ok(value) => {
+        // ... lots of code
+    }
+    Err(e) => return Err(e),
+}
+
+// ✅ Early return with ?
+let value = result?;
+// ... lots of code
+```
 
 ### Maintainability Improvements:
 - Better naming (clearer, more descriptive)
@@ -50,4 +79,3 @@ Review UNCOMMITED changes, actively look for opportunities to simplify and elimi
 - Point out what complexity is being removed
 - Highlight any assumptions being made
 - Note if there are trade-offs being considered
-

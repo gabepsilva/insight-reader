@@ -79,7 +79,10 @@ struct CleanupResponse {
 /// Returns the `cleaned_content` field from the JSON response, which contains
 /// intelligently processed and refined text optimized for text-to-speech synthesis.
 pub async fn cleanup_text(text: &str) -> Result<String, String> {
-    info!(bytes = text.len(), "Sending text to Natural Reading service");
+    info!(
+        bytes = text.len(),
+        "Sending text to Natural Reading service"
+    );
     debug!(text = %text, "Text being sent to Natural Reading service");
 
     let client = reqwest::Client::new();
@@ -99,7 +102,10 @@ pub async fn cleanup_text(text: &str) -> Result<String, String> {
         let status = response.status();
         let body = response.text().await.unwrap_or_default();
         warn!(?status, body = %body, "Natural Reading service returned error");
-        return Err(format!("Natural Reading service error ({}): {}", status, body));
+        return Err(format!(
+            "Natural Reading service error ({}): {}",
+            status, body
+        ));
     }
 
     let cleanup_response: CleanupResponse = response.json().await.map_err(|e| {
@@ -123,7 +129,8 @@ pub async fn cleanup_text(text: &str) -> Result<String, String> {
         markdown_to_plain_text(&cleanup_response.cleaned_content)
     } else {
         // Plain text - just normalize spaces within lines while preserving newlines
-        cleanup_response.cleaned_content
+        cleanup_response
+            .cleaned_content
             .lines()
             .map(|line| {
                 // Normalize spaces within the line
@@ -147,4 +154,3 @@ pub async fn cleanup_text(text: &str) -> Result<String, String> {
 
     Ok(plain_text)
 }
-

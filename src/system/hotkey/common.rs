@@ -1,10 +1,10 @@
 //! Shared hotkey implementation code for platforms that support global hotkeys
 
-use std::sync::mpsc;
 use global_hotkey::{
     hotkey::{Code, HotKey, Modifiers},
-    GlobalHotKeyManager, GlobalHotKeyEvent,
+    GlobalHotKeyEvent, GlobalHotKeyManager,
 };
+use std::sync::mpsc;
 use tracing::{info, warn};
 
 /// Hotkey configuration
@@ -20,7 +20,7 @@ impl Default for HotkeyConfig {
         let modifiers = Modifiers::META;
         #[cfg(not(target_os = "macos"))]
         let modifiers = Modifiers::CONTROL;
-        
+
         Self {
             modifiers,
             key: Code::KeyR,
@@ -41,9 +41,9 @@ impl HotkeyManager {
     pub fn new() -> Result<Self, Box<dyn std::error::Error>> {
         let manager = GlobalHotKeyManager::new()
             .map_err(|e| format!("Failed to create hotkey manager: {e}"))?;
-        
+
         let (sender, receiver) = mpsc::channel();
-        
+
         // Set up event handler for hotkey presses
         GlobalHotKeyEvent::set_event_handler(Some({
             let sender = sender.clone();
@@ -51,9 +51,9 @@ impl HotkeyManager {
                 let _ = sender.send(());
             }
         }));
-        
+
         info!("Hotkey manager initialized");
-        
+
         Ok(Self {
             manager,
             receiver,
@@ -61,7 +61,7 @@ impl HotkeyManager {
             current_hotkey: None,
         })
     }
-    
+
     /// Register a hotkey with the given configuration
     pub fn register(&mut self, config: HotkeyConfig) -> Result<(), Box<dyn std::error::Error>> {
         // Unregister existing hotkey if any
@@ -70,28 +70,30 @@ impl HotkeyManager {
                 warn!(error = %e, "Failed to unregister previous hotkey");
             }
         }
-        
+
         let hotkey = HotKey::new(Some(config.modifiers), config.key);
-        
-        self.manager.register(hotkey)
+
+        self.manager
+            .register(hotkey)
             .map_err(|e| format!("Failed to register hotkey: {e}"))?;
-        
+
         self.current_hotkey = Some(hotkey);
         info!(?config, "Hotkey registered successfully");
         Ok(())
     }
-    
+
     /// Unregister the current hotkey
     pub fn unregister(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         if let Some(ref hotkey) = self.current_hotkey {
-            self.manager.unregister(*hotkey)
+            self.manager
+                .unregister(*hotkey)
                 .map_err(|e| format!("Failed to unregister hotkey: {e}"))?;
             self.current_hotkey = None;
             info!("Hotkey unregistered");
         }
         Ok(())
     }
-    
+
     /// Try to receive a hotkey press event (non-blocking)
     pub fn try_recv(&self) -> Option<()> {
         self.receiver.try_recv().ok()

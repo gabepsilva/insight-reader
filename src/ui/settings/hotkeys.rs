@@ -5,7 +5,7 @@ use iced::{Alignment, Color, Element, Length};
 
 use crate::model::Message;
 use crate::styles::{circle_button_style, section_style, white_checkbox_style};
-use crate::system::{format_hotkey_display};
+use crate::system::format_hotkey_display;
 
 /// Helper to create white text with consistent styling (matching view.rs pattern).
 fn white_text(content: &str, size: u32) -> text::Text<'_> {
@@ -20,21 +20,29 @@ fn white_text(content: &str, size: u32) -> text::Text<'_> {
 pub fn hotkey_settings_section<'a>(app: &'a crate::model::App) -> Element<'a, Message> {
     // Format hotkey display string
     let hotkey_display = format_hotkey_display(&app.hotkey_config);
-    
+
     // Check if hotkeys are disabled due to Wayland/Hyprland
     let is_disabled = app.hotkeys_disabled_wayland;
-    
+
     // Hotkey enabled checkbox (disabled if on Wayland/Hyprland)
     let checkbox_label = format!("Enable global hotkey ({})", hotkey_display);
-    let mut hotkey_checkbox = checkbox(if is_disabled { false } else { app.hotkey_enabled })
-        .label(checkbox_label)
-        .style(white_checkbox_style);
+    let mut hotkey_checkbox = checkbox(if is_disabled {
+        false
+    } else {
+        app.hotkey_enabled
+    })
+    .label(checkbox_label)
+    .style(white_checkbox_style);
     if !is_disabled {
         hotkey_checkbox = hotkey_checkbox.on_toggle(Message::HotkeyToggled);
     }
-    
+
     // Set Hotkey button (disabled if on Wayland/Hyprland)
-    let set_button_text = if app.listening_for_hotkey { "Cancel" } else { "Set Hotkey" };
+    let set_button_text = if app.listening_for_hotkey {
+        "Cancel"
+    } else {
+        "Set Hotkey"
+    };
     let mut set_button = button(white_text(set_button_text, 12))
         .style(circle_button_style)
         .padding([6.0, 12.0]);
@@ -45,14 +53,16 @@ pub fn hotkey_settings_section<'a>(app: &'a crate::model::App) -> Element<'a, Me
             Message::StartListeningForHotkey
         });
     }
-    
+
     // Status/info message (listening status or Wayland/Hyprland info)
     let status_message: Option<Element<'a, Message>> = if app.listening_for_hotkey && !is_disabled {
-        Some(white_text("Press your key combination...", 11)
-            .style(|_theme| iced::widget::text::Style {
-                color: Some(Color::from_rgb(0.4, 0.6, 1.0)),
-            })
-            .into())
+        Some(
+            white_text("Press your key combination...", 11)
+                .style(|_theme| iced::widget::text::Style {
+                    color: Some(Color::from_rgb(0.4, 0.6, 1.0)),
+                })
+                .into(),
+        )
     } else if is_disabled {
         Some(
             row![
@@ -73,7 +83,7 @@ pub fn hotkey_settings_section<'a>(app: &'a crate::model::App) -> Element<'a, Me
     } else {
         None
     };
-    
+
     let hotkey_control = column![
         row![
             hotkey_checkbox,
@@ -83,11 +93,7 @@ pub fn hotkey_settings_section<'a>(app: &'a crate::model::App) -> Element<'a, Me
         .align_y(Alignment::Center)
         .spacing(0),
         if let Some(msg) = status_message {
-            column![
-                Space::new().height(Length::Fixed(6.0)),
-                msg,
-            ]
-            .spacing(0)
+            column![Space::new().height(Length::Fixed(6.0)), msg,].spacing(0)
         } else {
             column![].spacing(0)
         },
@@ -96,11 +102,9 @@ pub fn hotkey_settings_section<'a>(app: &'a crate::model::App) -> Element<'a, Me
 
     container(
         row![
-            container(
-                white_text("Global Hotkey", 14)
-            )
-            .width(Length::Fixed(120.0))
-            .align_x(Alignment::Start),
+            container(white_text("Global Hotkey", 14))
+                .width(Length::Fixed(120.0))
+                .align_x(Alignment::Start),
             Space::new().width(Length::Fixed(16.0)),
             container(hotkey_control)
                 .width(Length::Fill)
@@ -108,17 +112,19 @@ pub fn hotkey_settings_section<'a>(app: &'a crate::model::App) -> Element<'a, Me
         ]
         .align_y(Alignment::Center)
         .width(Length::Fill)
-        .padding([12.0, 16.0])
+        .padding([12.0, 16.0]),
     )
     .style(section_style)
     .into()
 }
 
 /// Convert Iced keyboard Key to global_hotkey Code
-pub fn iced_key_to_global_hotkey_code(key: &iced::keyboard::Key) -> Option<global_hotkey::hotkey::Code> {
+pub fn iced_key_to_global_hotkey_code(
+    key: &iced::keyboard::Key,
+) -> Option<global_hotkey::hotkey::Code> {
     use global_hotkey::hotkey::Code;
     use iced::keyboard::{key::Named, Key};
-    
+
     match key {
         // Character keys (letters and numbers)
         Key::Character(c) if c.len() == 1 => {
@@ -202,12 +208,14 @@ pub fn iced_key_to_global_hotkey_code(key: &iced::keyboard::Key) -> Option<globa
 }
 
 /// Convert Iced keyboard Modifiers to global_hotkey Modifiers
-pub fn iced_modifiers_to_global_hotkey_modifiers(modifiers: iced::keyboard::Modifiers) -> global_hotkey::hotkey::Modifiers {
+pub fn iced_modifiers_to_global_hotkey_modifiers(
+    modifiers: iced::keyboard::Modifiers,
+) -> global_hotkey::hotkey::Modifiers {
     use global_hotkey::hotkey::Modifiers as GHModifiers;
     use iced::keyboard::Modifiers as IcedModifiers;
-    
+
     let mut result = GHModifiers::empty();
-    
+
     if modifiers.contains(IcedModifiers::SHIFT) {
         result |= GHModifiers::SHIFT;
     }
@@ -220,6 +228,6 @@ pub fn iced_modifiers_to_global_hotkey_modifiers(modifiers: iced::keyboard::Modi
     if modifiers.contains(IcedModifiers::LOGO) {
         result |= GHModifiers::META;
     }
-    
+
     result
 }

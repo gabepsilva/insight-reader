@@ -10,10 +10,10 @@ use crate::model::LanguageInfo;
 /// Voice metadata from AWS Polly
 #[derive(Debug, Clone)]
 pub struct PollyVoiceInfo {
-    pub id: String,              // AWS VoiceId (e.g., "Matthew", "Joanna")
-    pub name: String,            // Voice name
-    pub language: LanguageInfo,  // Language information
-    pub gender: String,          // "Male" or "Female"
+    pub id: String,             // AWS VoiceId (e.g., "Matthew", "Joanna")
+    pub name: String,           // Voice name
+    pub language: LanguageInfo, // Language information
+    pub gender: String,         // "Male" or "Female"
     pub engine: String,         // "standard" or "neural"
 }
 
@@ -79,7 +79,7 @@ pub async fn fetch_polly_voices() -> Result<HashMap<String, PollyVoiceInfo>, Str
             for engine in supported_engines {
                 let engine_str = format!("{:?}", engine);
                 let key = format!("{}:{}", id, engine_str);
-                
+
                 let voice_info = PollyVoiceInfo {
                     id: id.clone(),
                     name: name.clone().unwrap_or_else(|| id.clone()),
@@ -189,7 +189,7 @@ fn create_language_info(lang_code: &str) -> LanguageInfo {
     // AWS language codes are typically in format like "en-US", "pt-BR", etc.
     // We need to convert to our format like "en_US", "pt_BR"
     let normalized_code = lang_code.replace('-', "_");
-    
+
     // Extract language and region
     let parts: Vec<&str> = normalized_code.split('_').collect();
     let lang_family = parts.first().copied().unwrap_or("en").to_string();
@@ -345,7 +345,10 @@ pub fn get_available_languages(
 
     // Note: This function is called during view rendering, so we use trace instead of debug
     // to avoid excessive logging
-    trace!(count = lang_list.len(), "Extracted available languages from AWS voices");
+    trace!(
+        count = lang_list.len(),
+        "Extracted available languages from AWS voices"
+    );
     lang_list
 }
 

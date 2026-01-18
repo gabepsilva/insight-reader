@@ -1,6 +1,9 @@
 //! UI rendering logic
 
-use iced::widget::{button, checkbox, column, container, mouse_area, progress_bar, radio, row, scrollable, svg, text, text_editor, Space};
+use iced::widget::{
+    button, checkbox, column, container, mouse_area, progress_bar, radio, row, scrollable, svg,
+    text, text_editor, Space,
+};
 use iced::{Alignment, Background, Color, ContentFit, Element, Length};
 
 use crate::flags;
@@ -117,19 +120,20 @@ fn create_language_grid(
     let mut grid_rows = column![].spacing(6);
     let mut current_row = row![].spacing(8);
     let mut col_count = 0;
-    
+
     for (lang_code, lang_info) in languages.iter() {
         let flag_icon = flags::get_flag_icon(lang_code);
         let label_text = format!("{} ({})", lang_info.name_english, lang_code);
         let lang_code_clone = lang_code.clone();
         let is_selected = selected_language == Some(lang_code.as_str());
-        
+
         let lang_button = button(
             container(
                 row![
                     flag_icon,
                     Space::new().width(Length::Fixed(6.0)),
-                    text(label_text).size(13)
+                    text(label_text)
+                        .size(13)
                         .style(move |_theme| iced::widget::text::Style {
                             color: Some(if is_selected {
                                 Color::WHITE
@@ -138,43 +142,38 @@ fn create_language_grid(
                             }),
                         })
                 ]
-                .align_y(Alignment::Center)
+                .align_y(Alignment::Center),
             )
             .padding([5.0, 8.0])
-            .width(Length::Fill)
+            .width(Length::Fill),
         )
         .style(transparent_button_style)
         .width(Length::Fill)
         .on_press(Message::OpenVoiceSelection(lang_code_clone));
-        
-        current_row = current_row.push(
-            container(lang_button)
-                .width(Length::Fill)
-        );
+
+        current_row = current_row.push(container(lang_button).width(Length::Fill));
         col_count += 1;
-        
+
         if col_count >= COLS {
             grid_rows = grid_rows.push(current_row);
             current_row = row![].spacing(8);
             col_count = 0;
         }
     }
-    
+
     // Fill remaining columns in the last row
     if col_count > 0 {
         while col_count < COLS {
             current_row = current_row.push(
                 container(Space::new().width(Length::Fill).height(Length::Fixed(1.0)))
-                    .width(Length::Fill)
+                    .width(Length::Fill),
             );
             col_count += 1;
         }
         grid_rows = grid_rows.push(current_row);
     }
-    
-    scrollable(grid_rows)
-        .height(Length::Fixed(300.0))
-        .into()
+
+    scrollable(grid_rows).height(Length::Fixed(300.0)).into()
 }
 
 /// Helper to create red error text with consistent styling.
@@ -204,15 +203,14 @@ fn close_button<'a>(msg: Message) -> Element<'a, Message> {
 fn modal_header<'a>(title: &'a str, close_msg: Message) -> Element<'a, Message> {
     container(
         row![
-            white_text(title, 20)
-                .style(|_theme| iced::widget::text::Style {
-                    color: Some(Color::WHITE),
-                }),
+            white_text(title, 20).style(|_theme| iced::widget::text::Style {
+                color: Some(Color::WHITE),
+            }),
             Space::new().width(Length::Fill),
             close_button(close_msg),
         ]
         .width(Length::Fill)
-        .align_y(Alignment::Center)
+        .align_y(Alignment::Center),
     )
     .width(Length::Fill)
     .padding([20.0, 24.0])
@@ -222,17 +220,13 @@ fn modal_header<'a>(title: &'a str, close_msg: Message) -> Element<'a, Message> 
 
 /// Settings window view - floating modal style
 pub fn settings_window_view<'a>(app: &'a App) -> Element<'a, Message> {
-
     // Error message display (if present)
     let error_display: Element<'a, Message> = if let Some(error_msg) = &app.error_message {
         container(
-            container(
-                error_text(error_msg, 13)
-                    .width(Length::Fill)
-            )
-            .width(Length::Fill)
-            .padding(12)
-            .style(error_container_style)
+            container(error_text(error_msg, 13).width(Length::Fill))
+                .width(Length::Fill)
+                .padding(12)
+                .style(error_container_style),
         )
         .padding([16, 16]) // Extra top padding to show it's part of the provider section
         .width(Length::Fill)
@@ -263,10 +257,9 @@ pub fn settings_window_view<'a>(app: &'a App) -> Element<'a, Message> {
             // Info icon button (circled i)
             button(
                 container(
-                    white_text("ⓘ", 16)
-                        .style(|_theme| iced::widget::text::Style {
-                            color: Some(Color::from_rgb(0.3, 0.6, 1.0)),
-                        })
+                    white_text("ⓘ", 16).style(|_theme| iced::widget::text::Style {
+                        color: Some(Color::from_rgb(0.3, 0.6, 1.0)),
+                    })
                 )
                 .width(Length::Fixed(24.0))
                 .height(Length::Fixed(24.0))
@@ -284,16 +277,14 @@ pub fn settings_window_view<'a>(app: &'a App) -> Element<'a, Message> {
     .spacing(0);
 
     // AWS Polly error message display (if present and AWS Polly is selected)
-    let polly_error_display: Element<'a, Message> = if app.selected_backend == TTSBackend::AwsPolly {
+    let polly_error_display: Element<'a, Message> = if app.selected_backend == TTSBackend::AwsPolly
+    {
         if let Some(error_msg) = &app.polly_error_message {
             container(
-                container(
-                    error_text(error_msg, 13)
-                        .width(Length::Fill)
-                )
-                .width(Length::Fill)
-                .padding(12)
-                .style(error_container_style)
+                container(error_text(error_msg, 13).width(Length::Fill))
+                    .width(Length::Fill)
+                    .padding(12)
+                    .style(error_container_style),
             )
             .padding([12, 16]) // Add padding around the error box
             .width(Length::Fill)
@@ -308,7 +299,7 @@ pub fn settings_window_view<'a>(app: &'a App) -> Element<'a, Message> {
     // Piper Voice section (only shown when Piper is selected)
     let piper_voice_section: Element<'a, Message> = if app.selected_backend == TTSBackend::Piper {
         use crate::voices;
-        
+
         // Current voice display
         let current_voice_display = if let Some(ref voice_key) = app.selected_voice {
             text(format!("Piper voice selected: {}", voice_key))
@@ -323,7 +314,7 @@ pub fn settings_window_view<'a>(app: &'a App) -> Element<'a, Message> {
                     color: Some(Color::from_rgba(1.0, 1.0, 1.0, 0.7)),
                 })
         };
-        
+
         // Get available languages from voices
         let language_controls: Element<'a, Message> = if let Some(ref voices) = app.voices {
             let languages = voices::get_available_languages(voices);
@@ -331,15 +322,14 @@ pub fn settings_window_view<'a>(app: &'a App) -> Element<'a, Message> {
         } else {
             // Voices not loaded yet
             column![
-                white_text("Loading voices...", 12)
-                    .style(|_theme| iced::widget::text::Style {
-                        color: Some(Color::from_rgba(1.0, 1.0, 1.0, 0.6)),
-                    }),
+                white_text("Loading voices...", 12).style(|_theme| iced::widget::text::Style {
+                    color: Some(Color::from_rgba(1.0, 1.0, 1.0, 0.6)),
+                }),
             ]
             .spacing(0)
             .into()
         };
-        
+
         container(
             container(
                 column![
@@ -353,9 +343,9 @@ pub fn settings_window_view<'a>(app: &'a App) -> Element<'a, Message> {
                         .width(Length::Fill)
                         .padding([0.0, 16.0]),
                 ]
-                .spacing(0)
+                .spacing(0),
             )
-            .style(section_style)
+            .style(section_style),
         )
         .padding([16, 16]) // Extra top padding to show it's part of the provider section
         .width(Length::Fill)
@@ -365,9 +355,10 @@ pub fn settings_window_view<'a>(app: &'a App) -> Element<'a, Message> {
     };
 
     // AWS Polly Voice section (only shown when AWS Polly is selected and voices are loaded)
-    let polly_voice_section: Element<'a, Message> = if app.selected_backend == TTSBackend::AwsPolly {
+    let polly_voice_section: Element<'a, Message> = if app.selected_backend == TTSBackend::AwsPolly
+    {
         use crate::voices::aws;
-        
+
         // Only show if voices are loaded (which means credentials are configured)
         if let Some(ref voices) = app.polly_voices {
             // Current voice display
@@ -377,9 +368,15 @@ pub fn settings_window_view<'a>(app: &'a App) -> Element<'a, Message> {
                     let engine_display = engine_display_name(engine_str);
                     // Try to get voice name from loaded voices
                     if let Some(voice_info) = voices.get(voice_key) {
-                        format!("AWS Polly voice selected: {} ({}, {})", voice_info.name, voice_info.gender, engine_display)
+                        format!(
+                            "AWS Polly voice selected: {} ({}, {})",
+                            voice_info.name, voice_info.gender, engine_display
+                        )
                     } else {
-                        format!("AWS Polly voice selected: {} ({})", voice_id, engine_display)
+                        format!(
+                            "AWS Polly voice selected: {} ({})",
+                            voice_id, engine_display
+                        )
                     }
                 } else {
                     // Fallback for old format (just voice ID)
@@ -397,11 +394,12 @@ pub fn settings_window_view<'a>(app: &'a App) -> Element<'a, Message> {
                         color: Some(Color::from_rgba(1.0, 1.0, 1.0, 0.7)),
                     })
             };
-            
+
             // Get available languages from AWS voices
             let languages = aws::get_available_languages(voices);
-            let language_controls: Element<'a, Message> = create_language_grid(languages, app.selected_language.as_deref()).into();
-            
+            let language_controls: Element<'a, Message> =
+                create_language_grid(languages, app.selected_language.as_deref()).into();
+
             container(
                 container(
                     column![
@@ -415,9 +413,9 @@ pub fn settings_window_view<'a>(app: &'a App) -> Element<'a, Message> {
                             .width(Length::Fill)
                             .padding([0.0, 16.0]),
                     ]
-                    .spacing(0)
+                    .spacing(0),
                 )
-                .style(section_style)
+                .style(section_style),
             )
             .padding([16, 16]) // Extra top padding to show it's part of the provider section
             .width(Length::Fill)
@@ -433,12 +431,11 @@ pub fn settings_window_view<'a>(app: &'a App) -> Element<'a, Message> {
     let provider_section = container(
         column![
             row![
-                container(
-                    white_text("Text-to-Speech Provider", 14)
-                        .style(|_theme| iced::widget::text::Style {
-                            color: Some(Color::from_rgba(1.0, 1.0, 1.0, 0.85)),
-                        })
-                )
+                container(white_text("Text-to-Speech Provider", 14).style(|_theme| {
+                    iced::widget::text::Style {
+                        color: Some(Color::from_rgba(1.0, 1.0, 1.0, 0.85)),
+                    }
+                }))
                 .width(Length::Fixed(120.0))
                 .align_x(Alignment::Start),
                 Space::new().width(Length::Fixed(16.0)),
@@ -454,32 +451,56 @@ pub fn settings_window_view<'a>(app: &'a App) -> Element<'a, Message> {
             piper_voice_section,
             polly_voice_section,
         ]
-        .spacing(8)
+        .spacing(8),
     )
     .style(section_style);
 
     // Log Level section - compact horizontal layout
     let log_level_controls = row![
-        radio("Error", LogLevel::Error, Some(app.log_level), Message::LogLevelSelected)
-            .style(white_radio_style),
-        radio("Warn", LogLevel::Warn, Some(app.log_level), Message::LogLevelSelected)
-            .style(white_radio_style),
-        radio("Info", LogLevel::Info, Some(app.log_level), Message::LogLevelSelected)
-            .style(white_radio_style),
-        radio("Debug", LogLevel::Debug, Some(app.log_level), Message::LogLevelSelected)
-            .style(white_radio_style),
-        radio("Trace", LogLevel::Trace, Some(app.log_level), Message::LogLevelSelected)
-            .style(white_radio_style),
+        radio(
+            "Error",
+            LogLevel::Error,
+            Some(app.log_level),
+            Message::LogLevelSelected
+        )
+        .style(white_radio_style),
+        radio(
+            "Warn",
+            LogLevel::Warn,
+            Some(app.log_level),
+            Message::LogLevelSelected
+        )
+        .style(white_radio_style),
+        radio(
+            "Info",
+            LogLevel::Info,
+            Some(app.log_level),
+            Message::LogLevelSelected
+        )
+        .style(white_radio_style),
+        radio(
+            "Debug",
+            LogLevel::Debug,
+            Some(app.log_level),
+            Message::LogLevelSelected
+        )
+        .style(white_radio_style),
+        radio(
+            "Trace",
+            LogLevel::Trace,
+            Some(app.log_level),
+            Message::LogLevelSelected
+        )
+        .style(white_radio_style),
     ]
     .spacing(16);
 
     let log_level_section = container(
         row![
             container(
-                white_text("Log Level", 14)
-                    .style(|_theme| iced::widget::text::Style {
-                        color: Some(Color::from_rgba(1.0, 1.0, 1.0, 0.85)),
-                    })
+                white_text("Log Level", 14).style(|_theme| iced::widget::text::Style {
+                    color: Some(Color::from_rgba(1.0, 1.0, 1.0, 0.85)),
+                })
             )
             .width(Length::Fixed(120.0))
             .align_x(Alignment::Start),
@@ -490,7 +511,7 @@ pub fn settings_window_view<'a>(app: &'a App) -> Element<'a, Message> {
         ]
         .align_y(Alignment::Center)
         .width(Length::Fill)
-        .padding([12.0, 16.0])
+        .padding([12.0, 16.0]),
     )
     .style(section_style);
 
@@ -505,10 +526,9 @@ pub fn settings_window_view<'a>(app: &'a App) -> Element<'a, Message> {
             // Info icon button (circled i)
             button(
                 container(
-                    white_text("ⓘ", 16)
-                        .style(|_theme| iced::widget::text::Style {
-                            color: Some(Color::from_rgb(0.3, 0.6, 1.0)),
-                        })
+                    white_text("ⓘ", 16).style(|_theme| iced::widget::text::Style {
+                        color: Some(Color::from_rgb(0.3, 0.6, 1.0)),
+                    })
                 )
                 .width(Length::Fixed(24.0))
                 .height(Length::Fixed(24.0))
@@ -525,10 +545,9 @@ pub fn settings_window_view<'a>(app: &'a App) -> Element<'a, Message> {
         column![
             Space::new().height(Length::Fixed(6.0)),
             row![
-                white_text("Coming soon", 11)
-                    .style(|_theme| iced::widget::text::Style {
-                        color: Some(Color::from_rgba(1.0, 1.0, 1.0, 0.7)),
-                    }),
+                white_text("Coming soon", 11).style(|_theme| iced::widget::text::Style {
+                    color: Some(Color::from_rgba(1.0, 1.0, 1.0, 0.7)),
+                }),
             ]
             .align_y(Alignment::Center)
             .spacing(0),
@@ -539,12 +558,11 @@ pub fn settings_window_view<'a>(app: &'a App) -> Element<'a, Message> {
 
     let text_cleanup_section = container(
         row![
-            container(
-                white_text("Natural Reading", 14)
-                    .style(|_theme| iced::widget::text::Style {
-                        color: Some(Color::from_rgba(1.0, 1.0, 1.0, 0.85)),
-                    })
-            )
+            container(white_text("Natural Reading", 14).style(|_theme| {
+                iced::widget::text::Style {
+                    color: Some(Color::from_rgba(1.0, 1.0, 1.0, 0.85)),
+                }
+            }))
             .width(Length::Fixed(120.0))
             .align_x(Alignment::Start),
             Space::new().width(Length::Fixed(16.0)),
@@ -554,7 +572,7 @@ pub fn settings_window_view<'a>(app: &'a App) -> Element<'a, Message> {
         ]
         .align_y(Alignment::Center)
         .width(Length::Fill)
-        .padding([12.0, 16.0])
+        .padding([12.0, 16.0]),
     )
     .style(section_style);
 
@@ -578,7 +596,7 @@ pub fn settings_window_view<'a>(app: &'a App) -> Element<'a, Message> {
             "Standard OCR (local)"
         }
     };
-    
+
     let ocr_controls = column![
         radio(
             default_ocr_label,
@@ -607,10 +625,9 @@ pub fn settings_window_view<'a>(app: &'a App) -> Element<'a, Message> {
             // Info icon button (circled i)
             button(
                 container(
-                    white_text("ⓘ", 16)
-                        .style(|_theme| iced::widget::text::Style {
-                            color: Some(Color::from_rgb(0.3, 0.6, 1.0)),
-                        })
+                    white_text("ⓘ", 16).style(|_theme| iced::widget::text::Style {
+                        color: Some(Color::from_rgb(0.3, 0.6, 1.0)),
+                    })
                 )
                 .width(Length::Fixed(24.0))
                 .height(Length::Fixed(24.0))
@@ -630,10 +647,9 @@ pub fn settings_window_view<'a>(app: &'a App) -> Element<'a, Message> {
     let ocr_section = container(
         row![
             container(
-                white_text("OCR", 14)
-                    .style(|_theme| iced::widget::text::Style {
-                        color: Some(Color::from_rgba(1.0, 1.0, 1.0, 0.85)),
-                    })
+                white_text("OCR", 14).style(|_theme| iced::widget::text::Style {
+                    color: Some(Color::from_rgba(1.0, 1.0, 1.0, 0.85)),
+                })
             )
             .width(Length::Fixed(120.0))
             .align_x(Alignment::Start),
@@ -644,7 +660,7 @@ pub fn settings_window_view<'a>(app: &'a App) -> Element<'a, Message> {
         ]
         .align_y(Alignment::Center)
         .width(Length::Fill)
-        .padding([12.0, 16.0])
+        .padding([12.0, 16.0]),
     )
     .style(section_style);
 
@@ -747,30 +763,31 @@ pub fn main_view(app: &App) -> Element<'_, Message> {
 
     // 5. Progress bar OR status text directly under the content row (not under gear)
     // Progress bar extends from left edge of content_row to right edge of screenshot button
-    let (progress_or_status, gap_height): (Element<Message>, f32) = if let Some(status) = &app.status_text {
-        // Show status text during loading (pushed up above where progress bar would be)
-        let elem = container(
-            text(status)
-                .size(11)
-                .style(|_theme| iced::widget::text::Style {
-                    color: Some(Color::from_rgba(1.0, 1.0, 1.0, 0.7)),
-                }),
-        )
-        .width(Length::Fill)
-        .height(Length::Fixed(33.0))
-        .padding([-6.0, 16.0])
-        .into();
-        (elem, -8.0)
-    } else {
-        // Show progress bar during playback (stays in same position)
-        // Extends from left padding (16.0) to end of screenshot button
-        let elem = container(progress_bar(0.0..=1.0, app.progress))
+    let (progress_or_status, gap_height): (Element<Message>, f32) =
+        if let Some(status) = &app.status_text {
+            // Show status text during loading (pushed up above where progress bar would be)
+            let elem = container(
+                text(status)
+                    .size(11)
+                    .style(|_theme| iced::widget::text::Style {
+                        color: Some(Color::from_rgba(1.0, 1.0, 1.0, 0.7)),
+                    }),
+            )
             .width(Length::Fill)
-            .height(Length::Fixed(1.0))
-            .padding([0.0, 16.0])
+            .height(Length::Fixed(33.0))
+            .padding([-6.0, 16.0])
             .into();
-        (elem, 3.0)
-    };
+            (elem, -8.0)
+        } else {
+            // Show progress bar during playback (stays in same position)
+            // Extends from left padding (16.0) to end of screenshot button
+            let elem = container(progress_bar(0.0..=1.0, app.progress))
+                .width(Length::Fill)
+                .height(Length::Fixed(1.0))
+                .padding([0.0, 16.0])
+                .into();
+            (elem, 3.0)
+        };
 
     let content_column = column![
         content_row,
@@ -807,126 +824,129 @@ pub fn main_view(app: &App) -> Element<'_, Message> {
 
 /// Voice selection window view - shows voices for a selected language
 pub fn voice_selection_window_view<'a>(app: &'a App) -> Element<'a, Message> {
-
     // Get voices for selected language (Piper or AWS)
-    let voice_list: Element<'a, Message> = if let Some(ref lang_code) = app.selected_language.as_ref() {
+    let voice_list: Element<'a, Message> = if let Some(ref lang_code) =
+        app.selected_language.as_ref()
+    {
         if app.selected_backend == TTSBackend::Piper {
             // Piper voices
             use crate::voices;
             if let Some(ref voices) = app.voices.as_ref() {
                 let language_voices = voices::get_voices_for_language(voices, lang_code);
-                
+
                 if language_voices.is_empty() {
                     column![
-                        white_text("No voices available for this language", 12)
-                            .style(|_theme| iced::widget::text::Style {
+                        white_text("No voices available for this language", 12).style(|_theme| {
+                            iced::widget::text::Style {
                                 color: Some(Color::from_rgba(1.0, 1.0, 1.0, 0.6)),
-                            }),
+                            }
+                        }),
                     ]
                     .spacing(0)
                     .into()
                 } else {
                     let mut controls = column![].spacing(8);
-                    
+
                     for voice in language_voices {
                         let voice_key = voice.key.clone();
                         let voice_name = format!("{} ({})", voice.name, voice.quality);
                         let is_selected = app.selected_voice.as_deref() == Some(&voice_key);
-                        let is_downloaded = crate::voices::download::is_voice_downloaded(&voice_key);
+                        let is_downloaded =
+                            crate::voices::download::is_voice_downloaded(&voice_key);
                         let is_downloading = app.downloading_voice.as_deref() == Some(&voice_key);
-                
-                // Voice row: checkbox + name + quality + download/select button
-                let voice_key_clone = voice_key.clone();
-                let voice_row = if is_downloaded {
-                    // Voice is downloaded - allow selection
-                    row![
-                        checkbox(is_selected)
-                            .label(voice_name.clone())
-                            .on_toggle(move |checked| {
-                                if checked {
-                                    Message::VoiceSelected(voice_key_clone.clone())
-                                } else {
-                                    Message::CloseVoiceSelection // Deselect
-                                }
-                            })
-                            .style(white_checkbox_style),
-                        Space::new().width(Length::Fixed(8.0)),
-                        button(white_text("Select", 11))
-                            .style(transparent_button_style)
-                            .padding([4.0, 8.0])
-                            .on_press(Message::VoiceSelected(voice_key.clone())),
-                    ]
-                    .align_y(Alignment::Center)
-                    .spacing(8)
-                } else if is_downloading {
-                    // Voice is currently downloading - show animated spinner
-                    // Create animated spinner using rotating characters
-                    let spinner_chars = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
-                    let spinner_idx = ((app.loading_animation_time * 10.0) as usize) % spinner_chars.len();
-                    let spinner_text = format!("{} Downloading...", spinner_chars[spinner_idx]);
-                    
-                    row![
-                        checkbox(false)
-                            .label(voice_name.clone())
-                            .style(white_checkbox_style),
-                        Space::new().width(Length::Fixed(8.0)),
-                        // Spinner: animated
-                        container(
-                            text(spinner_text)
-                                .size(11)
-                                .style(|_theme| iced::widget::text::Style {
-                                    color: Some(Color::from_rgba(0.3, 0.8, 1.0, 0.9)),
-                                })
-                        )
-                        .width(Length::Fixed(120.0))
-                        .align_x(Alignment::Center),
-                    ]
-                    .align_y(Alignment::Center)
-                    .spacing(8)
-                } else {
-                    // Voice not downloaded - disable checkbox, show download button
-                    row![
-                        checkbox(false)
-                            .label(voice_name.clone())
-                            .style(white_checkbox_style),
-                        Space::new().width(Length::Fixed(8.0)),
-                        button(white_text("Download", 11))
-                            .style(transparent_button_style)
-                            .padding([4.0, 8.0])
-                            .on_press(Message::VoiceDownloadRequested(voice_key.clone())),
-                    ]
-                    .align_y(Alignment::Center)
-                    .spacing(8)
-                };
-                
+
+                        // Voice row: checkbox + name + quality + download/select button
+                        let voice_key_clone = voice_key.clone();
+                        let voice_row = if is_downloaded {
+                            // Voice is downloaded - allow selection
+                            row![
+                                checkbox(is_selected)
+                                    .label(voice_name.clone())
+                                    .on_toggle(move |checked| {
+                                        if checked {
+                                            Message::VoiceSelected(voice_key_clone.clone())
+                                        } else {
+                                            Message::CloseVoiceSelection // Deselect
+                                        }
+                                    })
+                                    .style(white_checkbox_style),
+                                Space::new().width(Length::Fixed(8.0)),
+                                button(white_text("Select", 11))
+                                    .style(transparent_button_style)
+                                    .padding([4.0, 8.0])
+                                    .on_press(Message::VoiceSelected(voice_key.clone())),
+                            ]
+                            .align_y(Alignment::Center)
+                            .spacing(8)
+                        } else if is_downloading {
+                            // Voice is currently downloading - show animated spinner
+                            // Create animated spinner using rotating characters
+                            let spinner_chars = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+                            let spinner_idx = ((app.loading_animation_time * 10.0) as usize)
+                                % spinner_chars.len();
+                            let spinner_text =
+                                format!("{} Downloading...", spinner_chars[spinner_idx]);
+
+                            row![
+                                checkbox(false)
+                                    .label(voice_name.clone())
+                                    .style(white_checkbox_style),
+                                Space::new().width(Length::Fixed(8.0)),
+                                // Spinner: animated
+                                container(text(spinner_text).size(11).style(|_theme| {
+                                    iced::widget::text::Style {
+                                        color: Some(Color::from_rgba(0.3, 0.8, 1.0, 0.9)),
+                                    }
+                                }))
+                                .width(Length::Fixed(120.0))
+                                .align_x(Alignment::Center),
+                            ]
+                            .align_y(Alignment::Center)
+                            .spacing(8)
+                        } else {
+                            // Voice not downloaded - disable checkbox, show download button
+                            row![
+                                checkbox(false)
+                                    .label(voice_name.clone())
+                                    .style(white_checkbox_style),
+                                Space::new().width(Length::Fixed(8.0)),
+                                button(white_text("Download", 11))
+                                    .style(transparent_button_style)
+                                    .padding([4.0, 8.0])
+                                    .on_press(Message::VoiceDownloadRequested(voice_key.clone())),
+                            ]
+                            .align_y(Alignment::Center)
+                            .spacing(8)
+                        };
+
                         controls = controls.push(voice_row);
                     }
-                    
+
                     scrollable(controls).into()
                 }
             } else {
-                column![
-                    white_text("Voices not loaded", 12)
-                        .style(|_theme| iced::widget::text::Style {
-                            color: Some(Color::from_rgba(1.0, 1.0, 1.0, 0.6)),
-                        }),
-                ]
+                column![white_text("Voices not loaded", 12).style(|_theme| {
+                    iced::widget::text::Style {
+                        color: Some(Color::from_rgba(1.0, 1.0, 1.0, 0.6)),
+                    }
+                }),]
                 .spacing(0)
                 .into()
             }
         } else if app.selected_backend == TTSBackend::AwsPolly {
             // AWS Polly voices - only show if voices are loaded
             use crate::voices::aws;
-            
+
             if let Some(ref voices) = app.polly_voices.as_ref() {
                 let language_voices = aws::get_voices_for_language(voices, lang_code);
-                
+
                 if language_voices.is_empty() {
                     column![
-                        white_text("No voices available for this language", 12)
-                            .style(|_theme| iced::widget::text::Style {
+                        white_text("No voices available for this language", 12).style(|_theme| {
+                            iced::widget::text::Style {
                                 color: Some(Color::from_rgba(1.0, 1.0, 1.0, 0.6)),
-                            }),
+                            }
+                        }),
                     ]
                     .spacing(0)
                     .into()
@@ -949,16 +969,17 @@ pub fn voice_selection_window_view<'a>(app: &'a App) -> Element<'a, Message> {
                         };
                         engine_order(&a.engine).cmp(&engine_order(&b.engine))
                     });
-                    
+
                     let mut controls = column![].spacing(8);
-                    
+
                     for voice in sorted_voices {
                         // Use format "VoiceId:Engine" as the key to distinguish engine variants
                         let voice_key = format!("{}:{}", voice.id, voice.engine);
                         let engine_display = engine_display_name(&voice.engine);
-                        let voice_name = format!("{} ({}, {})", voice.name, voice.gender, engine_display);
+                        let voice_name =
+                            format!("{} ({}, {})", voice.name, voice.gender, engine_display);
                         let is_selected = app.selected_polly_voice.as_deref() == Some(&voice_key);
-                        
+
                         // AWS voices are always available (no download needed)
                         let voice_key_clone = voice_key.clone();
                         let voice_row = row![
@@ -980,10 +1001,10 @@ pub fn voice_selection_window_view<'a>(app: &'a App) -> Element<'a, Message> {
                         ]
                         .align_y(Alignment::Center)
                         .spacing(8);
-                        
+
                         controls = controls.push(voice_row);
                     }
-                    
+
                     scrollable(controls).into()
                 }
             } else {
@@ -991,68 +1012,69 @@ pub fn voice_selection_window_view<'a>(app: &'a App) -> Element<'a, Message> {
                 column![].spacing(0).into()
             }
         } else {
-            column![
-                white_text("No backend selected", 12)
-                    .style(|_theme| iced::widget::text::Style {
-                        color: Some(Color::from_rgba(1.0, 1.0, 1.0, 0.6)),
-                    }),
-            ]
+            column![white_text("No backend selected", 12).style(|_theme| {
+                iced::widget::text::Style {
+                    color: Some(Color::from_rgba(1.0, 1.0, 1.0, 0.6)),
+                }
+            }),]
             .spacing(0)
             .into()
         }
     } else {
         column![
-            white_text("No language selected", 12)
-                .style(|_theme| iced::widget::text::Style {
-                    color: Some(Color::from_rgba(1.0, 1.0, 1.0, 0.6)),
-                }),
+            white_text("No language selected", 12).style(|_theme| iced::widget::text::Style {
+                color: Some(Color::from_rgba(1.0, 1.0, 1.0, 0.6)),
+            }),
         ]
         .spacing(0)
         .into()
     };
 
     // Get language info for header (outside the voice_list scope)
-    let (header_flag_icon, language_name): (Element<'a, Message>, String) = if let Some(lang_code) = &app.selected_language {
-        let flag_icon = flags::get_flag_icon(lang_code);
-        
-        let lang_info: Option<LanguageInfo> = match app.selected_backend {
-            TTSBackend::Piper => app.voices.as_ref().and_then(|v| {
-                use crate::voices;
-                voices::get_available_languages(v)
-                    .into_iter()
-                    .find(|(code, _)| code == lang_code)
-                    .map(|(_, info)| info)
-            }),
-            TTSBackend::AwsPolly => app.polly_voices.as_ref().and_then(|v| {
-                v.values()
-                    .find(|voice| voice.language.code == *lang_code)
-                    .map(|voice| voice.language.clone())
-            }),
-        };
-        
-        let name = if let Some(lang_info) = lang_info {
-            format!("{} ({})", lang_info.name_english, lang_code)
+    let (header_flag_icon, language_name): (Element<'a, Message>, String) =
+        if let Some(lang_code) = &app.selected_language {
+            let flag_icon = flags::get_flag_icon(lang_code);
+
+            let lang_info: Option<LanguageInfo> = match app.selected_backend {
+                TTSBackend::Piper => app.voices.as_ref().and_then(|v| {
+                    use crate::voices;
+                    voices::get_available_languages(v)
+                        .into_iter()
+                        .find(|(code, _)| code == lang_code)
+                        .map(|(_, info)| info)
+                }),
+                TTSBackend::AwsPolly => app.polly_voices.as_ref().and_then(|v| {
+                    v.values()
+                        .find(|voice| voice.language.code == *lang_code)
+                        .map(|voice| voice.language.clone())
+                }),
+            };
+
+            let name = if let Some(lang_info) = lang_info {
+                format!("{} ({})", lang_info.name_english, lang_code)
+            } else {
+                lang_code.to_string()
+            };
+            (flag_icon.into(), name)
         } else {
-            lang_code.to_string()
+            // Fallback: globe icon for unknown language
+            let globe_icon = flags::get_flag_icon("unknown");
+            (globe_icon.into(), "Unknown Language".to_string())
         };
-        (flag_icon.into(), name)
-    } else {
-        // Fallback: globe icon for unknown language
-        let globe_icon = flags::get_flag_icon("unknown");
-        (globe_icon.into(), "Unknown Language".to_string())
-    };
 
     container(
         column![
             container(
                 row![
-                    text("Select voice in ").size(18)
+                    text("Select voice in ")
+                        .size(18)
                         .style(|_theme| iced::widget::text::Style {
                             color: Some(Color::WHITE),
                         }),
                     header_flag_icon,
                     Space::new().width(Length::Fixed(6.0)),
-                    text(language_name).size(18)
+                    text(language_name)
+                        .size(18)
                         .style(|_theme| iced::widget::text::Style {
                             color: Some(Color::WHITE),
                         }),
@@ -1068,11 +1090,9 @@ pub fn voice_selection_window_view<'a>(app: &'a App) -> Element<'a, Message> {
             // Scrollable voice list
             scrollable(
                 container(
-                    column![
-                        container(voice_list)
-                            .width(Length::Fill)
-                            .padding([20.0, 24.0]),
-                    ]
+                    column![container(voice_list)
+                        .width(Length::Fill)
+                        .padding([20.0, 24.0]),]
                     .spacing(0)
                 )
                 .width(Length::Fill)
@@ -1289,44 +1309,39 @@ pub fn ocr_info_window_view<'a>(_app: &'a App) -> Element<'a, Message> {
 
 /// Extracted text dialog window - displays extracted text with copy button
 pub fn extracted_text_dialog_view<'a>(app: &'a App) -> Element<'a, Message> {
-
     // Display the extracted text in an editable text area
-    let text_content: Element<'a, Message> = if let Some(ref editor_content) = app.extracted_text_editor {
-        // Use text_editor widget for multi-line editing
-        container(
-            text_editor(editor_content)
-                .on_action(Message::ExtractedTextEditorAction)
-        )
-        .width(Length::Fill)
-        .height(Length::Fill)
-        .padding(8)
-        .into()
-    } else if app.extracted_text.is_some() {
-        // Fallback: show message if editor not initialized
-        container(
-            white_text("Initializing editor...", 14)
-                .style(|_theme| iced::widget::text::Style {
+    let text_content: Element<'a, Message> =
+        if let Some(ref editor_content) = app.extracted_text_editor {
+            // Use text_editor widget for multi-line editing
+            container(text_editor(editor_content).on_action(Message::ExtractedTextEditorAction))
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .padding(8)
+                .into()
+        } else if app.extracted_text.is_some() {
+            // Fallback: show message if editor not initialized
+            container(white_text("Initializing editor...", 14).style(|_theme| {
+                iced::widget::text::Style {
                     color: Some(Color::from_rgba(1.0, 1.0, 1.0, 0.6)),
-                })
-        )
-        .width(Length::Fill)
-        .height(Length::Fill)
-        .center_x(Length::Fill)
-        .center_y(Length::Fill)
-        .into()
-    } else {
-        container(
-            white_text("No text available", 14)
-                .style(|_theme| iced::widget::text::Style {
+                }
+            }))
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .center_x(Length::Fill)
+            .center_y(Length::Fill)
+            .into()
+        } else {
+            container(white_text("No text available", 14).style(|_theme| {
+                iced::widget::text::Style {
                     color: Some(Color::from_rgba(1.0, 1.0, 1.0, 0.6)),
-                })
-        )
-        .width(Length::Fill)
-        .height(Length::Fill)
-        .center_x(Length::Fill)
-        .center_y(Length::Fill)
-        .into()
-    };
+                }
+            }))
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .center_x(Length::Fill)
+            .center_y(Length::Fill)
+            .into()
+        };
 
     // Copy button - with SVG icon and text
     let copy_button = button(
@@ -1334,14 +1349,13 @@ pub fn extracted_text_dialog_view<'a>(app: &'a App) -> Element<'a, Message> {
             row![
                 clipboard_icon(16.0),
                 Space::new().width(Length::Fixed(6.0)),
-                white_text("Copy to Clipboard", 13)
-                    .style(|_theme| iced::widget::text::Style {
-                        color: Some(Color::WHITE),
-                    })
+                white_text("Copy to Clipboard", 13).style(|_theme| iced::widget::text::Style {
+                    color: Some(Color::WHITE),
+                })
             ]
-            .align_y(Alignment::Center)
+            .align_y(Alignment::Center),
         )
-        .padding([8.0, 16.0])
+        .padding([8.0, 16.0]),
     )
     .style(transparent_button_style)
     .on_press(Message::CopyExtractedTextToClipboard);
@@ -1352,14 +1366,13 @@ pub fn extracted_text_dialog_view<'a>(app: &'a App) -> Element<'a, Message> {
             row![
                 play_icon(16.0),
                 Space::new().width(Length::Fixed(6.0)),
-                white_text("Read", 13)
-                    .style(|_theme| iced::widget::text::Style {
-                        color: Some(Color::WHITE),
-                    })
+                white_text("Read", 13).style(|_theme| iced::widget::text::Style {
+                    color: Some(Color::WHITE),
+                })
             ]
-            .align_y(Alignment::Center)
+            .align_y(Alignment::Center),
         )
-        .padding([8.0, 16.0])
+        .padding([8.0, 16.0]),
     )
     .style(transparent_button_style)
     .on_press(Message::ReadExtractedText);
@@ -1368,10 +1381,9 @@ pub fn extracted_text_dialog_view<'a>(app: &'a App) -> Element<'a, Message> {
         column![
             container(
                 row![
-                    white_text("Extracted Text", 20)
-                        .style(|_theme| iced::widget::text::Style {
-                            color: Some(Color::WHITE),
-                        }),
+                    white_text("Extracted Text", 20).style(|_theme| iced::widget::text::Style {
+                        color: Some(Color::WHITE),
+                    }),
                     Space::new().width(Length::Fill),
                     read_button,
                     Space::new().width(Length::Fixed(4.0)),
@@ -1402,29 +1414,28 @@ pub fn extracted_text_dialog_view<'a>(app: &'a App) -> Element<'a, Message> {
 
 /// Screenshot viewer window - displays the captured screenshot
 pub fn screenshot_viewer_view<'a>(app: &'a App) -> Element<'a, Message> {
-
     // Display the screenshot image if available
-    let image_content: Element<'a, Message> = if let Some(ref screenshot_path) = app.screenshot_path {
+    let image_content: Element<'a, Message> = if let Some(ref screenshot_path) = app.screenshot_path
+    {
         // Load image from file path using Iced's image widget
-        use iced::widget::image::{Image, Handle};
+        use iced::widget::image::{Handle, Image};
         let image_handle = Handle::from_path(screenshot_path);
         let img = Image::new(image_handle)
             .width(Length::Fill)
             .height(Length::Fill)
             .content_fit(ContentFit::Contain);
-        
+
         container(img)
             .width(Length::Fill)
             .height(Length::Fill)
             .padding(20)
             .into()
     } else {
-        container(
-            white_text("No screenshot available", 14)
-                .style(|_theme| iced::widget::text::Style {
-                    color: Some(Color::from_rgba(1.0, 1.0, 1.0, 0.6)),
-                })
-        )
+        container(white_text("No screenshot available", 14).style(|_theme| {
+            iced::widget::text::Style {
+                color: Some(Color::from_rgba(1.0, 1.0, 1.0, 0.6)),
+            }
+        }))
         .width(Length::Fill)
         .height(Length::Fill)
         .center_x(Length::Fill)

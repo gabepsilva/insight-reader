@@ -1,7 +1,7 @@
 //! Stub implementation for non-macOS platforms
 
-use std::sync::mpsc;
 use crate::system::HotkeyConfig;
+use std::sync::mpsc;
 
 /// System tray handle (stub)
 pub struct SystemTray {
@@ -25,7 +25,7 @@ impl SystemTray {
             _receiver: receiver,
         })
     }
-    
+
     /// Try to receive a tray event (always returns None on non-macOS)
     pub fn try_recv(&self) -> Option<TrayEvent> {
         None

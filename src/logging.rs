@@ -201,7 +201,8 @@ pub fn init_logging(config: &LoggingConfig) -> Result<(), LogInitError> {
         (true, true) => {
             let log_dir = resolve_log_dir(config);
             std::fs::create_dir_all(&log_dir).map_err(LogInitError::DirectoryCreation)?;
-            let file_appender = RollingFileAppender::new(Rotation::DAILY, &log_dir, "insight-reader.log");
+            let file_appender =
+                RollingFileAppender::new(Rotation::DAILY, &log_dir, "insight-reader.log");
             let file_layer = tracing_subscriber::fmt::layer()
                 .event_format(HumanFormatter)
                 .with_writer(file_appender)
@@ -222,7 +223,8 @@ pub fn init_logging(config: &LoggingConfig) -> Result<(), LogInitError> {
         (false, true) => {
             let log_dir = resolve_log_dir(config);
             std::fs::create_dir_all(&log_dir).map_err(LogInitError::DirectoryCreation)?;
-            let file_appender = RollingFileAppender::new(Rotation::DAILY, &log_dir, "insight-reader.log");
+            let file_appender =
+                RollingFileAppender::new(Rotation::DAILY, &log_dir, "insight-reader.log");
             let file_layer = tracing_subscriber::fmt::layer()
                 .event_format(HumanFormatter)
                 .with_writer(file_appender)
@@ -283,4 +285,3 @@ pub fn set_verbosity(level: LogLevel) {
 pub fn default_log_dir() -> PathBuf {
     resolve_log_dir(&LoggingConfig::default())
 }
-

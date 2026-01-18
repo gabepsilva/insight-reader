@@ -90,13 +90,14 @@ impl PollyTTSProvider {
         })
     }
 
-
     /// Check if AWS credentials are available.
     ///
     /// Returns `Ok(())` if credentials are found, or an error message if not.
     pub fn check_credentials() -> Result<(), String> {
         // Check environment variables first (AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY)
-        if std::env::var("AWS_ACCESS_KEY_ID").is_ok() && std::env::var("AWS_SECRET_ACCESS_KEY").is_ok() {
+        if std::env::var("AWS_ACCESS_KEY_ID").is_ok()
+            && std::env::var("AWS_SECRET_ACCESS_KEY").is_ok()
+        {
             return Ok(());
         }
 
@@ -105,7 +106,8 @@ impl PollyTTSProvider {
             let credentials_path = home.join(".aws").join("credentials");
             if credentials_path.exists() {
                 if let Ok(content) = std::fs::read_to_string(&credentials_path) {
-                    let profile = std::env::var("AWS_PROFILE").unwrap_or_else(|_| "default".to_string());
+                    let profile =
+                        std::env::var("AWS_PROFILE").unwrap_or_else(|_| "default".to_string());
                     let section_header = if profile == "default" {
                         "[default]".to_string()
                     } else {

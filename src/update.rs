@@ -127,10 +127,7 @@ fn open_main_window() -> (window::Id, Task<Message>) {
         level: window::Level::AlwaysOnTop,
         position: window::Position::SpecificWith(|window_size, monitor_size| {
             let margin = 70.0;
-            iced::Point::new(
-                margin,
-                monitor_size.height - window_size.height - margin,
-            )
+            iced::Point::new(margin, monitor_size.height - window_size.height - margin)
         }),
         ..Default::default()
     });
@@ -143,10 +140,7 @@ fn fetch_selected_text_task(context: &'static str) -> Task<Message> {
     Task::perform(
         async move {
             debug!("Fetching selected text: {}", context);
-            let result = tokio::task::spawn_blocking(|| {
-                crate::system::get_selected_text()
-            })
-            .await;
+            let result = tokio::task::spawn_blocking(|| crate::system::get_selected_text()).await;
             result.unwrap_or_else(|e| {
                 tracing::warn!(error = %e, "Failed to join blocking task for text fetch");
                 None
@@ -174,11 +168,7 @@ fn open_settings_if_needed(app: &mut App, error_msg: String) -> Task<Message> {
 
 /// Process text: send to cleanup API if enabled, otherwise return task to initialize TTS directly.
 /// Sets loading state before returning.
-fn process_text_for_tts(
-    app: &mut App,
-    text: String,
-    context: &'static str,
-) -> Task<Message> {
+fn process_text_for_tts(app: &mut App, text: String, context: &'static str) -> Task<Message> {
     if app.text_cleanup_enabled {
         set_loading_state(app, "Processing content...");
         info!(context, "Natural Reading enabled, sending to service");
@@ -189,7 +179,12 @@ fn process_text_for_tts(
     } else {
         set_loading_state(app, "Synthesizing voice...");
         info!(context, "Initializing TTS directly");
-        initialize_tts_async(app.selected_backend, text, context, app.selected_polly_voice.clone())
+        initialize_tts_async(
+            app.selected_backend,
+            text,
+            context,
+            app.selected_polly_voice.clone(),
+        )
     }
 }
 
@@ -213,10 +208,7 @@ fn initialize_tts_async(
     if backend == TTSBackend::AwsPolly {
         if let Err(e) = PollyTTSProvider::check_credentials() {
             warn!("AWS credentials not found during initialization");
-            return Task::perform(
-                async move { Err(e) },
-                Message::TTSInitialized,
-            );
+            return Task::perform(async move { Err(e) }, Message::TTSInitialized);
         }
     }
 
@@ -235,16 +227,16 @@ fn initialize_tts_async(
         Ok(provider) => {
             // Wrap provider to make it Send-safe for cross-thread usage
             let send_provider = SendTTSProvider(provider);
-            
+
             // Spawn thread to do blocking synthesis
             let (tx, rx) = mpsc::channel();
-            
+
             std::thread::spawn(move || {
                 let mut send_provider = send_provider;
                 let provider = &mut send_provider.0;
                 info!(text = %text, "Synthesizing text");
                 let result = provider.speak(&text);
-                
+
                 match result {
                     Ok(()) => {
                         info!(context, "TTS synthesis completed successfully");
@@ -265,7 +257,8 @@ fn initialize_tts_async(
             Task::perform(
                 async move {
                     tokio::task::spawn_blocking(move || {
-                        rx.recv().unwrap_or_else(|e| Err(format!("Channel error: {}", e)))
+                        rx.recv()
+                            .unwrap_or_else(|e| Err(format!("Channel error: {}", e)))
                     })
                     .await
                     .unwrap_or_else(|e| Err(format!("Task join error: {}", e)))
@@ -275,28 +268,21 @@ fn initialize_tts_async(
         }
         Err(e) => {
             let error_msg = format_tts_error(&e, backend);
-            Task::perform(
-                async move { Err(error_msg) },
-                Message::TTSInitialized,
-            )
+            Task::perform(async move { Err(error_msg) }, Message::TTSInitialized)
         }
     }
 }
 
 pub fn update(app: &mut App, message: Message) -> Task<Message> {
     match message {
-        Message::SkipBackward => {
-            handle_skip(app, |p| p.skip_backward(SKIP_SECONDS), "backward")
-        }
-        Message::SkipForward => {
-            handle_skip(app, |p| p.skip_forward(SKIP_SECONDS), "forward")
-        }
+        Message::SkipBackward => handle_skip(app, |p| p.skip_backward(SKIP_SECONDS), "backward"),
+        Message::SkipForward => handle_skip(app, |p| p.skip_forward(SKIP_SECONDS), "forward"),
         Message::PlayPause => {
             let Some(ref mut provider) = app.provider else {
                 warn!("PlayPause received with no active provider");
                 return Task::none();
             };
-            
+
             match app.playback_state {
                 PlaybackState::Playing => {
                     if let Err(e) = provider.pause() {
@@ -338,7 +324,7 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                 if app.loading_animation_time > std::f32::consts::PI * 2.0 {
                     app.loading_animation_time -= std::f32::consts::PI * 2.0;
                 }
-                
+
                 // Generate animated bar values using sine waves (only for TTS loading, not voice downloads)
                 if app.is_loading {
                     // Creates a smooth wave that travels across the bars
@@ -346,9 +332,14 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                         .map(|i| {
                             // Create a traveling wave effect
                             let position = i as f32 / NUM_BANDS as f32;
-                            let wave = (app.loading_animation_time * 2.0 + position * std::f32::consts::PI * 2.0).sin();
+                            let wave = (app.loading_animation_time * 2.0
+                                + position * std::f32::consts::PI * 2.0)
+                                .sin();
                             // Add some variation with a secondary wave
-                            let secondary = (app.loading_animation_time * 1.5 + position * std::f32::consts::PI * 3.0).sin() * 0.3;
+                            let secondary = (app.loading_animation_time * 1.5
+                                + position * std::f32::consts::PI * 3.0)
+                                .sin()
+                                * 0.3;
                             // Normalize to 0.0-1.0 range with some minimum height
                             ((wave + secondary) * 0.4 + 0.5).clamp(0.2, 1.0)
                         })
@@ -373,7 +364,7 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                 debug!("Settings window already open, ignoring request");
                 return Task::none();
             }
-            
+
             debug!("Settings clicked");
             let (window_id, task) = open_settings_window();
             debug!(?window_id, "Opening settings window");
@@ -388,7 +379,7 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
         Message::ProviderSelected(backend) => {
             info!(?backend, "TTS provider selected");
             app.selected_backend = backend;
-            
+
             // Check AWS credentials if AWS Polly is selected
             if backend == TTSBackend::AwsPolly {
                 match PollyTTSProvider::check_credentials() {
@@ -399,9 +390,7 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                         // Fetch AWS voices if not already loaded
                         if app.polly_voices.is_none() {
                             return Task::perform(
-                                async {
-                                    crate::voices::aws::fetch_polly_voices().await
-                                },
+                                async { crate::voices::aws::fetch_polly_voices().await },
                                 Message::PollyVoicesLoaded,
                             );
                         }
@@ -419,7 +408,7 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                 app.error_message = None;
                 app.polly_error_message = None;
             }
-            
+
             // Persist the selected backend so future runs remember the choice.
             config::save_voice_provider(backend);
             Task::none()
@@ -438,7 +427,7 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
             if app.main_window_id.is_none() {
                 app.main_window_id = Some(id);
                 info!("Main window ID set - UI is now visible");
-                
+
                 // If we already have pending text (from async fetch), initialize TTS now
                 if let Some(text) = app.pending_text.take() {
                     return process_text_for_tts(app, text, "WindowOpened");
@@ -499,7 +488,7 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
             } else {
                 info!("No text selected - app will wait for text or close");
             }
-            
+
             // Initialize TTS if window is already open, otherwise store for later
             if let Some(window_id) = app.main_window_id {
                 if let Some(text) = text {
@@ -508,7 +497,7 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                 warn!("No text selected - closing window");
                 return window::close(window_id);
             }
-            
+
             // Window not ready yet, store text for WindowOpened handler
             app.pending_text = text;
             trace!("Window not ready yet, text stored for later initialization");
@@ -517,10 +506,18 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
         Message::TextCleanupResponse(result) => {
             match result {
                 Ok(cleaned_text) => {
-                    info!(bytes = cleaned_text.len(), "Natural Reading successful, initializing TTS");
+                    info!(
+                        bytes = cleaned_text.len(),
+                        "Natural Reading successful, initializing TTS"
+                    );
                     // Update status to show we're now synthesizing
                     app.status_text = Some("Synthesizing voice...".to_string());
-                    return initialize_tts_async(app.selected_backend, cleaned_text, "TextCleanupResponse", app.selected_polly_voice.clone());
+                    return initialize_tts_async(
+                        app.selected_backend,
+                        cleaned_text,
+                        "TextCleanupResponse",
+                        app.selected_polly_voice.clone(),
+                    );
                 }
                 Err(e) => {
                     error!(error = %e, "Natural Reading service failed");
@@ -532,7 +529,7 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
         Message::TTSInitialized(result) => {
             // Clear loading state regardless of result
             clear_loading_state(app);
-            
+
             match result {
                 Ok(()) => {
                     // Retrieve provider from static storage
@@ -541,13 +538,13 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                         app.error_message = Some("Internal error: mutex lock failed".to_string());
                         return Task::none();
                     };
-                    
+
                     let Some(send_provider) = guard.take() else {
                         error!("TTS initialization succeeded but no provider found in storage");
                         app.error_message = Some("Internal error: provider not found".to_string());
                         return Task::none();
                     };
-                    
+
                     app.provider = Some(send_provider.0);
                     app.playback_state = PlaybackState::Playing;
                     app.error_message = None;
@@ -555,11 +552,11 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                 }
                 Err(e) => {
                     error!(error = %e, "TTS initialization failed");
-                    
+
                     // For "No audio data generated" errors, show in status text instead of opening settings
                     if e.contains("No audio data generated by piper") {
                         const DEFAULT_MSG: &str = "Voice gen. failed: Text too short or invalid";
-                        
+
                         // Extract stderr info if available, otherwise use default message
                         let user_message = if let Some(start) = e.find("stderr:") {
                             let stderr_content = e[start + 7..].trim();
@@ -571,12 +568,12 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                         } else {
                             DEFAULT_MSG.to_string()
                         };
-                        
+
                         app.status_text = Some(user_message);
                         info!("TTS error shown in status text instead of settings window");
                         return Task::none();
                     }
-                    
+
                     // For other errors, use the existing behavior (open settings window)
                     return open_settings_if_needed(app, e);
                 }
@@ -600,7 +597,10 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                     error!(error = %e, "Failed to load voices.json");
                     // Show error to user in settings window if it's open
                     if app.settings_window_id.is_some() {
-                        app.error_message = Some(format!("Failed to load voices: {}. Check your internet connection.", e));
+                        app.error_message = Some(format!(
+                            "Failed to load voices: {}. Check your internet connection.",
+                            e
+                        ));
                     }
                 }
             }
@@ -625,7 +625,7 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                         || error_lower.contains("network")
                         || error_lower.contains("timeout")
                         || error_lower.contains("clock");
-                    
+
                     app.polly_error_message = if is_service_error || !is_credential_error {
                         Some(e)
                     } else {
@@ -640,10 +640,10 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                 debug!("Voice selection window already open, ignoring request");
                 return Task::none();
             }
-            
+
             debug!(language = %lang_code, "Opening voice selection window");
             app.selected_language = Some(lang_code);
-            
+
             let (window_id, task) = window::open(window::Settings {
                 size: Size::new(400.0, 500.0), // 33% narrower: 600 * 0.67 ≈ 400
                 resizable: false,
@@ -656,23 +656,19 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
             app.voice_selection_window_id = Some(window_id);
             task.map(Message::WindowOpened)
         }
-        Message::CloseVoiceSelection => {
-            close_window_if_some(app.voice_selection_window_id.take())
-        }
+        Message::CloseVoiceSelection => close_window_if_some(app.voice_selection_window_id.take()),
         Message::OpenPollyInfo => {
             if app.polly_info_window_id.is_some() {
                 debug!("Polly info window already open, ignoring request");
                 return Task::none();
             }
-            
+
             debug!("Opening AWS Polly pricing info window");
             let (window_id, task) = open_info_window(Size::new(500.0, 400.0));
             app.polly_info_window_id = Some(window_id);
             task
         }
-        Message::ClosePollyInfo => {
-            close_window_if_some(app.polly_info_window_id.take())
-        }
+        Message::ClosePollyInfo => close_window_if_some(app.polly_info_window_id.take()),
         Message::OpenPollyPricingUrl => {
             let url = "https://aws.amazon.com/polly/pricing/";
             open_url(url);
@@ -695,21 +691,19 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                 debug!("OCR info window already open, ignoring request");
                 return Task::none();
             }
-            
+
             debug!("Opening Better OCR info window");
             let (window_id, task) = open_info_window(Size::new(500.0, 300.0));
             app.ocr_info_window_id = Some(window_id);
             task
         }
-        Message::CloseOCRInfo => {
-            close_window_if_some(app.ocr_info_window_id.take())
-        }
+        Message::CloseOCRInfo => close_window_if_some(app.ocr_info_window_id.take()),
         Message::OpenTextCleanupInfo => {
             if app.text_cleanup_info_window_id.is_some() {
                 debug!("Natural Reading info window already open, ignoring request");
                 return Task::none();
             }
-            
+
             debug!("Opening Natural Reading info window");
             let (window_id, task) = open_info_window(Size::new(500.0, 300.0));
             app.text_cleanup_info_window_id = Some(window_id);
@@ -734,15 +728,17 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
         }
         Message::VoiceDownloadRequested(voice_key) => {
             info!(voice = %voice_key, "Voice download requested");
-            
-            let voice_info = app.voices.as_ref()
+
+            let voice_info = app
+                .voices
+                .as_ref()
                 .and_then(|voices| voices.get(&voice_key).cloned());
-            
+
             if let Some(voice_info) = voice_info {
                 // Set downloading state
                 app.downloading_voice = Some(voice_key.clone());
                 set_loading_state(app, &format!("Downloading voice: {}...", voice_info.name));
-                
+
                 // Start async download
                 Task::perform(
                     async move {
@@ -804,7 +800,7 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                     info!(path = %file_path, "Screenshot captured successfully");
                     app.screenshot_path = Some(file_path.clone());
                     app.status_text = Some("Extracting text from image...".to_string());
-                    
+
                     // Automatically extract text from the screenshot
                     let file_path_clone = file_path.clone();
                     Task::perform(
@@ -840,17 +836,22 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
         Message::ScreenshotTextExtracted(result) => {
             match result {
                 Ok(extracted_text) => {
-                    info!(bytes = extracted_text.len(), "Text extracted from screenshot successfully");
+                    info!(
+                        bytes = extracted_text.len(),
+                        "Text extracted from screenshot successfully"
+                    );
                     info!(
                         text = %extracted_text,
                         "Extracted text from screenshot"
                     );
                     app.status_text = Some("Text extracted from image".to_string());
-                    
+
                     // Store extracted text and initialize editor content
                     app.extracted_text = Some(extracted_text.clone());
-                    app.extracted_text_editor = Some(iced::widget::text_editor::Content::with_text(&extracted_text));
-                    
+                    app.extracted_text_editor = Some(
+                        iced::widget::text_editor::Content::with_text(&extracted_text),
+                    );
+
                     // Open the extracted text dialog window
                     if app.extracted_text_dialog_window_id.is_none() {
                         let (window_id, task) = window::open(window::Settings {
@@ -884,12 +885,12 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                 debug!("Screenshot window already open, ignoring request");
                 return Task::none();
             }
-            
+
             if app.screenshot_path.is_none() {
                 debug!("No screenshot available to display");
                 return Task::none();
             }
-            
+
             debug!("Opening screenshot viewer window");
             let (window_id, task) = window::open(window::Settings {
                 size: Size::new(800.0, 600.0),
@@ -903,20 +904,18 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
             app.screenshot_window_id = Some(window_id);
             task.map(Message::WindowOpened)
         }
-        Message::CloseScreenshotViewer => {
-            close_window_if_some(app.screenshot_window_id.take())
-        }
+        Message::CloseScreenshotViewer => close_window_if_some(app.screenshot_window_id.take()),
         Message::OpenExtractedTextDialog => {
             if app.extracted_text_dialog_window_id.is_some() {
                 debug!("Extracted text dialog already open, ignoring request");
                 return Task::none();
             }
-            
+
             if app.extracted_text.is_none() {
                 debug!("No extracted text available to display");
                 return Task::none();
             }
-            
+
             debug!("Opening extracted text dialog window");
             let (window_id, task) = window::open(window::Settings {
                 size: Size::new(600.0, 400.0),
@@ -936,18 +935,23 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
             close_window_if_some(app.extracted_text_dialog_window_id.take())
         }
         Message::CopyExtractedTextToClipboard => {
-            let text_to_copy = app.extracted_text_editor.as_ref()
+            let text_to_copy = app
+                .extracted_text_editor
+                .as_ref()
                 .map(|e| e.text())
                 .or_else(|| app.extracted_text.clone());
-            
+
             let Some(text_to_copy) = text_to_copy else {
                 warn!("No extracted text available to copy");
                 return Task::none();
             };
-            
+
             match system::copy_to_clipboard(&text_to_copy) {
                 Ok(()) => {
-                    info!(bytes = text_to_copy.len(), "Text copied to clipboard successfully");
+                    info!(
+                        bytes = text_to_copy.len(),
+                        "Text copied to clipboard successfully"
+                    );
                     app.status_text = Some("Text copied to clipboard".to_string());
                 }
                 Err(e) => {
@@ -967,25 +971,35 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
             Task::none()
         }
         Message::ReadExtractedText => {
-            let text_to_read = app.extracted_text_editor.as_ref()
+            let text_to_read = app
+                .extracted_text_editor
+                .as_ref()
                 .map(|e| e.text())
                 .or_else(|| app.extracted_text.clone());
-            
+
             let Some(text_to_read) = text_to_read else {
                 warn!("No extracted text available to read");
                 return Task::none();
             };
-            
+
             if text_to_read.trim().is_empty() {
                 warn!("Extracted text is empty, cannot read");
                 return Task::none();
             }
-            
-            info!(bytes = text_to_read.len(), "Sending extracted text to TTS (bypassing text cleanup)");
+
+            info!(
+                bytes = text_to_read.len(),
+                "Sending extracted text to TTS (bypassing text cleanup)"
+            );
             // OCR text: skip all preprocessing (cleanup API, markdown parsing, etc.)
             // Send directly to TTS to preserve original formatting and line breaks
             set_loading_state(app, "Synthesizing voice...");
-            initialize_tts_async(app.selected_backend, text_to_read, "ReadExtractedText", app.selected_polly_voice.clone())
+            initialize_tts_async(
+                app.selected_backend,
+                text_to_read,
+                "ReadExtractedText",
+                app.selected_polly_voice.clone(),
+            )
         }
         Message::TrayEventReceived => {
             // Poll for tray events and convert them to messages
@@ -1082,10 +1096,10 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
             if app.hotkeys_disabled_wayland {
                 return Task::none();
             }
-            
+
             info!(enabled, "Hotkey toggled");
             app.hotkey_enabled = enabled;
-            
+
             if let Some(ref mut hotkey_manager) = app.hotkey_manager {
                 if enabled {
                     if let Err(e) = hotkey_manager.register(app.hotkey_config.clone()) {
@@ -1102,7 +1116,7 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                     info!("Hotkey unregistered successfully");
                 }
             }
-            
+
             crate::config::save_hotkey_config(&app.hotkey_config, app.hotkey_enabled);
             Task::none()
         }
@@ -1111,7 +1125,7 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
             if app.hotkeys_disabled_wayland {
                 return Task::none();
             }
-            
+
             info!("Starting to listen for hotkey input");
             app.listening_for_hotkey = true;
             app.error_message = None; // Clear any previous errors
@@ -1130,39 +1144,44 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                 return Task::none();
             }
             info!(?key, ?modifiers, "Hotkey combination captured");
-            
+
             // Convert Iced key/modifiers to global_hotkey format
-            use crate::ui::settings::hotkeys::{iced_key_to_global_hotkey_code, iced_modifiers_to_global_hotkey_modifiers};
-            
+            use crate::ui::settings::hotkeys::{
+                iced_key_to_global_hotkey_code, iced_modifiers_to_global_hotkey_modifiers,
+            };
+
             let Some(code) = iced_key_to_global_hotkey_code(&key) else {
                 error!("Invalid key captured: {:?}", key);
                 app.error_message = Some("Invalid key. Please try again.".to_string());
                 app.listening_for_hotkey = false;
                 return Task::none();
             };
-            
+
             let gh_modifiers = iced_modifiers_to_global_hotkey_modifiers(modifiers);
-            
+
             // Validate that we have at least one modifier
             if gh_modifiers.is_empty() {
                 error!("No modifiers in captured hotkey");
-                app.error_message = Some("Hotkey must include at least one modifier (Ctrl/Cmd, Shift, or Alt).".to_string());
+                app.error_message = Some(
+                    "Hotkey must include at least one modifier (Ctrl/Cmd, Shift, or Alt)."
+                        .to_string(),
+                );
                 app.listening_for_hotkey = false;
                 return Task::none();
             }
-            
+
             // Create new hotkey config
             let new_config = crate::system::HotkeyConfig {
                 modifiers: gh_modifiers,
                 key: code,
             };
-            
+
             // Exit listening mode
             app.listening_for_hotkey = false;
-            
+
             // Update the hotkey configuration
             app.hotkey_config = new_config.clone();
-            
+
             // Update hotkey registration if enabled
             if app.hotkey_enabled {
                 if let Some(ref mut hotkey_manager) = app.hotkey_manager {
@@ -1175,11 +1194,10 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                     }
                 }
             }
-            
+
             // Save to config
             crate::config::save_hotkey_config(&app.hotkey_config, app.hotkey_enabled);
             Task::none()
         }
     }
 }
-

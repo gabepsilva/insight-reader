@@ -33,7 +33,7 @@ pub fn circle_button_style(_theme: &Theme, status: button::Status) -> button::St
         button::Status::Pressed => Color::from_rgba(1.0, 1.0, 1.0, 0.35),
         _ => Color::from_rgba(1.0, 1.0, 1.0, 0.15),
     };
-    
+
     button::Style {
         background: Some(Background::Color(base_bg)),
         text_color: Color::WHITE,
@@ -78,7 +78,7 @@ pub fn close_button_style(_theme: &Theme, status: button::Status) -> button::Sty
         button::Status::Pressed => Color::from_rgba(1.0, 1.0, 1.0, 0.25),
         _ => Color::TRANSPARENT,
     };
-    
+
     button::Style {
         background: Some(Background::Color(base_bg)),
         text_color: Color::from_rgba(1.0, 1.0, 1.0, 0.7),

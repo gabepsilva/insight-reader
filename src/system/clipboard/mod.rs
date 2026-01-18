@@ -31,7 +31,10 @@ pub(crate) fn process_text(text: String, source: &str) -> Option<String> {
         debug!("{} is empty", source);
         None
     } else {
-        info!(bytes = trimmed.len(), "Successfully retrieved text from {}", source);
+        info!(
+            bytes = trimmed.len(),
+            "Successfully retrieved text from {}", source
+        );
         debug!(text = %text_preview(trimmed), "Captured text content");
         Some(trimmed.to_string())
     }
@@ -47,17 +50,17 @@ pub fn get_selected_text() -> Option<String> {
     {
         macos::get_selected_text_macos()
     }
-    
+
     #[cfg(target_os = "linux")]
     {
         linux::get_selected_text_linux()
     }
-    
+
     #[cfg(target_os = "windows")]
     {
         windows::get_selected_text_windows()
     }
-    
+
     #[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
     {
         warn!("Platform not supported for text selection");
@@ -74,21 +77,21 @@ pub fn copy_to_clipboard(text: &str) -> Result<(), String> {
     #[cfg(any(target_os = "macos", target_os = "linux", target_os = "windows"))]
     {
         use arboard::Clipboard;
-        
+
         let mut clipboard = Clipboard::new().map_err(|e| {
             warn!(error = %e, "Failed to initialize clipboard");
             format!("Failed to initialize clipboard: {}", e)
         })?;
-        
+
         clipboard.set_text(text).map_err(|e| {
             warn!(error = %e, "Failed to copy to clipboard");
             format!("Failed to copy to clipboard: {}", e)
         })?;
-        
+
         info!(bytes = text.len(), "Successfully copied text to clipboard");
         Ok(())
     }
-    
+
     #[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
     {
         warn!("Platform not supported for clipboard copy");

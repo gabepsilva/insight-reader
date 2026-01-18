@@ -3,6 +3,7 @@
 #![cfg_attr(target_os = "windows", windows_subsystem = "windows")]
 
 mod app;
+mod cli;
 mod config;
 mod flags;
 mod logging;
@@ -10,8 +11,8 @@ mod model;
 mod providers;
 mod styles;
 mod system;
-mod update;
 mod ui;
+mod update;
 mod view;
 mod voices;
 
@@ -19,6 +20,12 @@ use iced::daemon;
 use tracing::info;
 
 fn main() -> iced::Result {
+    // Check if running in CLI mode (properly detect CLI commands)
+    if cli::is_cli_mode() {
+        cli::run();
+        return Ok(());
+    }
+
     // Check for existing instance before doing anything else
     let _instance_guard = match crate::system::try_lock() {
         Ok(guard) => guard,

@@ -1,7 +1,7 @@
 //! Windows-specific hotkey display formatting
 
-use global_hotkey::hotkey::Modifiers;
 use super::common::format_key_code;
+use global_hotkey::hotkey::Modifiers;
 
 // Re-export common types and functions
 pub use super::common::{HotkeyConfig, HotkeyManager};
@@ -9,7 +9,7 @@ pub use super::common::{HotkeyConfig, HotkeyManager};
 /// Format hotkey configuration as a display string for menu items (Windows uses text labels)
 pub fn format_hotkey_display(config: &super::common::HotkeyConfig) -> String {
     let mut parts = Vec::new();
-    
+
     if config.modifiers.contains(Modifiers::META) {
         parts.push("Meta".to_string());
     }

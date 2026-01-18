@@ -6,7 +6,7 @@ use super::process_text;
 /// Windows doesn't have a PRIMARY selection like Linux, so we only read from clipboard.
 pub(super) fn get_selected_text_windows() -> Option<String> {
     use arboard::Clipboard;
-    
+
     Clipboard::new()
         .ok()?
         .get_text()

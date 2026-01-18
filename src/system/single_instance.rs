@@ -1,11 +1,11 @@
 //! Single-instance enforcement to prevent multiple instances from running simultaneously
 
+use dirs::config_dir;
+use fs2::FileExt;
 use std::fs::{File, OpenOptions};
 use std::io::{self, Read, Write};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
-use dirs::config_dir;
-use fs2::FileExt;
 use thiserror::Error;
 use tracing::{debug, error, info, warn};
 
@@ -28,7 +28,7 @@ pub enum SingleInstanceError {
     /// Another instance is already running
     #[error("Another instance of Insight Reader is already running")]
     LockFailed,
-    
+
     /// File system error (permissions, etc.)
     #[error("IO error: {0}")]
     IoError(#[from] io::Error),
@@ -46,40 +46,42 @@ pub struct SingleInstanceGuard {
 impl SingleInstanceGuard {
     #[cfg(unix)]
     fn new(file: File, listener: Option<UnixListener>) -> Self {
-        Self { _file: file, listener }
+        Self {
+            _file: file,
+            listener,
+        }
     }
-    
+
     #[cfg(windows)]
     fn new(file: File, listener: Option<NamedPipeListener>) -> Self {
-        Self { _file: file, listener }
+        Self {
+            _file: file,
+            listener,
+        }
     }
 }
 
 // Helper to get config directory or return appropriate error
 fn get_config_dir() -> Result<PathBuf, io::Error> {
-    config_dir().ok_or_else(|| {
-        io::Error::new(
-            io::ErrorKind::NotFound,
-            "Config directory not found",
-        )
-    })
+    config_dir()
+        .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Config directory not found"))
 }
 
 /// Attempts to acquire an exclusive lock on the lock file.
-/// 
+///
 /// Returns `Ok(Arc<SingleInstanceGuard>)` if the lock was acquired successfully,
 /// or `Err(SingleInstanceError::LockFailed)` if another instance is already running.
-/// 
+///
 /// The lock file is created in the same directory as the config file:
 /// `{config_dir}/insight-reader/.lock`
 pub fn try_lock() -> Result<Arc<SingleInstanceGuard>, SingleInstanceError> {
     let lock_path = lock_file_path()?;
-    
+
     // Ensure the config directory exists
     if let Some(parent) = lock_path.parent() {
         std::fs::create_dir_all(parent)?;
     }
-    
+
     // Open or create the lock file
     let file = OpenOptions::new()
         .read(true)
@@ -87,12 +89,12 @@ pub fn try_lock() -> Result<Arc<SingleInstanceGuard>, SingleInstanceError> {
         .create(true)
         .open(&lock_path)
         .map_err(SingleInstanceError::IoError)?;
-    
+
     // Try to acquire an exclusive lock (non-blocking)
     match file.try_lock_exclusive() {
         Ok(()) => {
             info!(lock_path = %lock_path.display(), "Single-instance lock acquired");
-            
+
             // Start IPC server to listen for bring-to-front messages
             let listener = start_ipc_server().ok();
             if listener.is_some() {
@@ -100,13 +102,13 @@ pub fn try_lock() -> Result<Arc<SingleInstanceGuard>, SingleInstanceError> {
             } else {
                 warn!("Failed to start IPC server, continuing without it");
             }
-            
+
             let guard = SingleInstanceGuard::new(file, listener);
             let guard_arc = Arc::new(guard);
-            
+
             // Store globally for IPC polling
             *INSTANCE_GUARD.lock().unwrap() = Some(guard_arc.clone());
-            
+
             Ok(guard_arc)
         }
         Err(e) => {
@@ -124,20 +126,20 @@ pub fn try_lock() -> Result<Arc<SingleInstanceGuard>, SingleInstanceError> {
 #[cfg(unix)]
 fn start_ipc_server() -> Result<UnixListener, io::Error> {
     let socket_path = ipc_socket_path()?;
-    
+
     // Remove existing socket file if it exists (stale from previous crash)
     if socket_path.exists() {
         let _ = std::fs::remove_file(&socket_path);
     }
-    
+
     // Ensure the directory exists
     if let Some(parent) = socket_path.parent() {
         std::fs::create_dir_all(parent)?;
     }
-    
+
     let listener = UnixListener::bind(&socket_path)?;
     listener.set_nonblocking(true)?;
-    
+
     info!(socket_path = %socket_path.display(), "IPC server listening on Unix socket");
     Ok(listener)
 }
@@ -156,14 +158,14 @@ fn start_ipc_server() -> Result<NamedPipeListener, io::Error> {
 #[cfg(unix)]
 fn send_bring_to_front_message() -> Result<(), io::Error> {
     let socket_path = ipc_socket_path()?;
-    
+
     if !socket_path.exists() {
         return Err(io::Error::new(
             io::ErrorKind::NotFound,
             "IPC socket not found",
         ));
     }
-    
+
     let mut stream = UnixStream::connect(&socket_path)?;
     stream.write_all(IPC_MESSAGE_BRING_TO_FRONT)?;
     stream.flush()?;
@@ -191,7 +193,10 @@ fn ipc_pipe_name() -> Result<String, io::Error> {
     // Windows named pipe format: \\.\pipe\name
     let pipe_name = format!(
         r"\\.\pipe\insight-reader-{}",
-        config_dir.to_string_lossy().replace('\\', "-").replace(':', "")
+        config_dir
+            .to_string_lossy()
+            .replace('\\', "-")
+            .replace(':', "")
     );
     Ok(pipe_name)
 }
@@ -210,22 +215,24 @@ pub fn try_recv_bring_to_front() -> bool {
     let Some(guard) = guard.as_ref() else {
         return false;
     };
-    
+
     #[cfg(unix)]
     {
         let Some(listener) = &guard.listener else {
             return false;
         };
-        
+
         // Accept any pending connections (non-blocking)
         let Ok((mut stream, _addr)) = listener.accept() else {
             return false;
         };
-        
+
         let mut buf = [0u8; 32];
         match stream.read(&mut buf) {
-            Ok(n) if n >= IPC_MESSAGE_BRING_TO_FRONT.len() 
-                && &buf[..IPC_MESSAGE_BRING_TO_FRONT.len()] == IPC_MESSAGE_BRING_TO_FRONT => {
+            Ok(n)
+                if n >= IPC_MESSAGE_BRING_TO_FRONT.len()
+                    && &buf[..IPC_MESSAGE_BRING_TO_FRONT.len()] == IPC_MESSAGE_BRING_TO_FRONT =>
+            {
                 info!("Received bring-to-front message from new instance");
                 return true;
             }
@@ -237,12 +244,12 @@ pub fn try_recv_bring_to_front() -> bool {
             }
         }
     }
-    
+
     #[cfg(windows)]
     {
         // TODO: Implement Windows named pipe polling
         let _ = guard;
     }
-    
+
     false
 }

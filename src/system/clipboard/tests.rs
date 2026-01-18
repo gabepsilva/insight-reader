@@ -76,7 +76,11 @@ fn test_text_preview_unicode_long() {
     // Should truncate at 200 characters (which is 200 emojis)
     // Each emoji is 4 bytes, so 200 emojis = 800 bytes, but we count chars
     let char_count = result.chars().count();
-    assert!(char_count <= 203, "Should truncate to 200 chars + '...', got {} chars", char_count);
+    assert!(
+        char_count <= 203,
+        "Should truncate to 200 chars + '...', got {} chars",
+        char_count
+    );
     assert!(result.ends_with("..."));
     // Verify the first 200 characters are emojis
     let without_suffix = result.strip_suffix("...").unwrap();
@@ -92,7 +96,11 @@ fn test_copy_to_clipboard_simple_ascii() {
     let _guard = clipboard_lock();
     let text = "Hello, world!";
     let result = copy_to_clipboard(text);
-    assert!(result.is_ok(), "Failed to copy simple ASCII text: {:?}", result);
+    assert!(
+        result.is_ok(),
+        "Failed to copy simple ASCII text: {:?}",
+        result
+    );
 }
 
 #[test]
@@ -117,7 +125,11 @@ fn test_copy_to_clipboard_special_characters() {
     let _guard = clipboard_lock();
     let text = "Line 1\nLine 2\tTabbed\tText\n\"Quoted\" 'Single'";
     let result = copy_to_clipboard(text);
-    assert!(result.is_ok(), "Failed to copy text with special characters: {:?}", result);
+    assert!(
+        result.is_ok(),
+        "Failed to copy text with special characters: {:?}",
+        result
+    );
 }
 
 #[test]
@@ -133,7 +145,11 @@ fn test_copy_to_clipboard_newlines() {
     let _guard = clipboard_lock();
     let text = "Line 1\nLine 2\nLine 3\n";
     let result = copy_to_clipboard(text);
-    assert!(result.is_ok(), "Failed to copy text with newlines: {:?}", result);
+    assert!(
+        result.is_ok(),
+        "Failed to copy text with newlines: {:?}",
+        result
+    );
 }
 
 // ============================================================================
@@ -146,26 +162,33 @@ fn test_get_selected_text_after_copy() {
     // Clear clipboard first to ensure we're testing our own copy operation
     copy_to_clipboard("").ok();
     wait_for_clipboard();
-    
+
     let original_text = "Test clipboard read";
     copy_to_clipboard(original_text).expect("Failed to copy text");
     wait_for_clipboard();
-    
+
     let result = get_selected_text();
     assert!(result.is_some(), "Failed to read clipboard after copy");
-    assert_eq!(result.unwrap(), original_text, "Read text doesn't match what we copied");
+    assert_eq!(
+        result.unwrap(),
+        original_text,
+        "Read text doesn't match what we copied"
+    );
 }
 
 #[test]
 fn test_get_selected_text_unicode() {
     let _guard = clipboard_lock();
     let original_text = "Hello 👋 World 🌍";
-    
+
     copy_to_clipboard(original_text).expect("Failed to copy unicode text");
     wait_for_clipboard();
-    
+
     let result = get_selected_text();
-    assert!(result.is_some(), "Failed to read unicode text from clipboard");
+    assert!(
+        result.is_some(),
+        "Failed to read unicode text from clipboard"
+    );
     assert_eq!(result.unwrap(), original_text);
 }
 
@@ -173,12 +196,15 @@ fn test_get_selected_text_unicode() {
 fn test_get_selected_text_with_newlines() {
     let _guard = clipboard_lock();
     let original_text = "Line 1\nLine 2\nLine 3";
-    
+
     copy_to_clipboard(original_text).expect("Failed to copy text with newlines");
     wait_for_clipboard();
-    
+
     let result = get_selected_text();
-    assert!(result.is_some(), "Failed to read text with newlines from clipboard");
+    assert!(
+        result.is_some(),
+        "Failed to read text with newlines from clipboard"
+    );
     assert_eq!(result.unwrap(), original_text);
 }
 
@@ -190,10 +216,10 @@ fn test_get_selected_text_with_newlines() {
 fn test_round_trip_ascii() {
     let _guard = clipboard_lock();
     let original_text = "Simple ASCII text for round-trip test";
-    
+
     copy_to_clipboard(original_text).expect("Failed to copy");
     wait_for_clipboard();
-    
+
     let read_text = get_selected_text().expect("Failed to read");
     assert_eq!(read_text, original_text, "Round-trip failed for ASCII text");
 }
@@ -202,34 +228,40 @@ fn test_round_trip_ascii() {
 fn test_round_trip_unicode() {
     let _guard = clipboard_lock();
     let original_text = "Hello 👋 World 🌍 Привет мир 你好";
-    
+
     copy_to_clipboard(original_text).expect("Failed to copy unicode");
     wait_for_clipboard();
-    
+
     let read_text = get_selected_text().expect("Failed to read unicode");
-    assert_eq!(read_text, original_text, "Round-trip failed for unicode text");
+    assert_eq!(
+        read_text, original_text,
+        "Round-trip failed for unicode text"
+    );
 }
 
 #[test]
 fn test_round_trip_special_characters() {
     let _guard = clipboard_lock();
     let original_text = "Text with \"quotes\", 'apostrophes',\nnewlines,\tand\ttabs";
-    
+
     copy_to_clipboard(original_text).expect("Failed to copy special chars");
     wait_for_clipboard();
-    
+
     let read_text = get_selected_text().expect("Failed to read special chars");
-    assert_eq!(read_text, original_text, "Round-trip failed for special characters");
+    assert_eq!(
+        read_text, original_text,
+        "Round-trip failed for special characters"
+    );
 }
 
 #[test]
 fn test_round_trip_long_text() {
     let _guard = clipboard_lock();
     let original_text = "a".repeat(2000);
-    
+
     copy_to_clipboard(&original_text).expect("Failed to copy long text");
     wait_for_clipboard();
-    
+
     let read_text = get_selected_text().expect("Failed to read long text");
     assert_eq!(read_text, original_text, "Round-trip failed for long text");
 }
@@ -238,22 +270,25 @@ fn test_round_trip_long_text() {
 fn test_round_trip_multiline() {
     let _guard = clipboard_lock();
     let original_text = "Line 1\nLine 2\nLine 3\nLine 4";
-    
+
     copy_to_clipboard(original_text).expect("Failed to copy multiline text");
     wait_for_clipboard();
-    
+
     let read_text = get_selected_text().expect("Failed to read multiline text");
-    assert_eq!(read_text, original_text, "Round-trip failed for multiline text");
+    assert_eq!(
+        read_text, original_text,
+        "Round-trip failed for multiline text"
+    );
 }
 
 #[test]
 fn test_round_trip_empty_string() {
     let _guard = clipboard_lock();
     let original_text = "";
-    
+
     copy_to_clipboard(original_text).expect("Failed to copy empty string");
     wait_for_clipboard();
-    
+
     // Empty clipboard might return None or empty string
     let read_text = get_selected_text();
     // On macOS/Linux, empty clipboard might return None
@@ -276,7 +311,7 @@ fn test_copy_to_clipboard_error_message_format() {
     // operations return proper Ok(()) results
     let text = "Test error message format";
     let result = copy_to_clipboard(text);
-    
+
     match result {
         Ok(()) => {
             // Success case - this is expected
@@ -284,8 +319,11 @@ fn test_copy_to_clipboard_error_message_format() {
         Err(e) => {
             // If it fails, error should be descriptive
             assert!(!e.is_empty(), "Error message should not be empty");
-            assert!(e.contains("clipboard"), 
-                "Error message should mention clipboard operation: {}", e);
+            assert!(
+                e.contains("clipboard"),
+                "Error message should mention clipboard operation: {}",
+                e
+            );
         }
     }
 }
@@ -296,13 +334,16 @@ fn test_get_selected_text_empty_clipboard() {
     // Clear clipboard by copying empty string
     copy_to_clipboard("").ok();
     wait_for_clipboard();
-    
+
     // Try to read - should return None for empty clipboard
     let result = get_selected_text();
     // On macOS/Linux, empty clipboard typically returns None
     // This is acceptable behavior
     if let Some(text) = result {
-        assert_eq!(text, "", "Empty clipboard should return empty string or None");
+        assert_eq!(
+            text, "",
+            "Empty clipboard should return empty string or None"
+        );
     }
 }
 
@@ -310,16 +351,12 @@ fn test_get_selected_text_empty_clipboard() {
 fn test_sequential_operations() {
     let _guard = clipboard_lock();
     // Test that multiple clipboard operations work correctly in sequence
-    let texts = vec![
-        "First text",
-        "Second text",
-        "Third text",
-    ];
-    
+    let texts = vec!["First text", "Second text", "Third text"];
+
     for text in texts {
         copy_to_clipboard(text).expect("Failed to copy in sequence");
         wait_for_clipboard();
-        
+
         let read_text = get_selected_text().expect("Failed to read in sequence");
         assert_eq!(read_text, text, "Sequential operation failed");
     }

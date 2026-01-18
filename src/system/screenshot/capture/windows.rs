@@ -184,18 +184,18 @@ exit 0
 /// Captures a screenshot region on Windows using PowerShell with Windows Forms.
 pub(super) fn capture_region_windows() -> Result<String, String> {
     info!("Starting interactive screenshot region selection on Windows");
-    
+
     let screenshot_path = env::temp_dir().join("insight-reader-screenshot.png");
     debug!(path = %screenshot_path.display(), "Screenshot will be saved to temp file");
-    
+
     // Get the path as a string, properly escaped for PowerShell
     // Escape single quotes by doubling them (PowerShell escaping)
     let escaped_path = screenshot_path.to_string_lossy().replace('\'', "''");
-    
+
     // Replace $args[0] placeholder in the script with the actual path
     // Use single quotes for literal string in PowerShell
     let script = SCREENSHOT_PS_SCRIPT.replace("$args[0]", &format!("'{}'", escaped_path));
-    
+
     // Execute PowerShell script for region selection
     // Use CREATE_NO_WINDOW flag to prevent console window from appearing
     const CREATE_NO_WINDOW: u32 = 0x08000000;
@@ -203,8 +203,10 @@ pub(super) fn capture_region_windows() -> Result<String, String> {
         .args([
             "-NoProfile",
             "-NonInteractive",
-            "-ExecutionPolicy", "Bypass",
-            "-Command", &script,
+            "-ExecutionPolicy",
+            "Bypass",
+            "-Command",
+            &script,
         ])
         .creation_flags(CREATE_NO_WINDOW)
         .output()
@@ -215,18 +217,18 @@ pub(super) fn capture_region_windows() -> Result<String, String> {
             return Err(format!("Failed to execute screenshot command: {}", e));
         }
     };
-    
+
     // Check if the command succeeded
     if !output.status.success() {
         let exit_code = output.status.code().unwrap_or(-1);
         let stderr = String::from_utf8_lossy(&output.stderr);
-        
+
         // Exit code 1 typically means user cancelled (Escape key)
         if exit_code == 1 {
             debug!("User cancelled screenshot selection");
             return Err("Screenshot selection cancelled".to_string());
         }
-        
+
         let error_msg = format!("Screenshot failed: {}", stderr.trim());
         error!(
             code = exit_code,
@@ -235,13 +237,13 @@ pub(super) fn capture_region_windows() -> Result<String, String> {
         );
         return Err(error_msg);
     }
-    
+
     // Verify the file was actually created
     if !screenshot_path.exists() {
         error!(path = %screenshot_path.display(), "Screenshot file was not created");
         return Err("Screenshot file was not created".to_string());
     }
-    
+
     let path_str = screenshot_path.to_string_lossy().to_string();
     info!(path = %path_str, "Screenshot captured successfully");
     Ok(path_str)

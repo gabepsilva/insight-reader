@@ -28,27 +28,25 @@ impl HotkeyManager {
     /// Create a new hotkey manager (stub)
     pub fn new() -> Result<Self, Box<dyn std::error::Error>> {
         warn!("Global hotkeys not supported on this platform");
-        Ok(Self {
-            enabled: false,
-        })
+        Ok(Self { enabled: false })
     }
-    
+
     /// Register a hotkey (stub)
     pub fn register(&mut self, _config: HotkeyConfig) -> Result<(), Box<dyn std::error::Error>> {
         warn!("Global hotkeys not supported on this platform");
         Ok(())
     }
-    
+
     /// Unregister the current hotkey (stub)
     pub fn unregister(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         Ok(())
     }
-    
+
     /// Check if hotkey is currently enabled
     pub fn is_enabled(&self) -> bool {
         false
     }
-    
+
     /// Try to receive a hotkey press event (stub)
     pub fn try_recv(&self) -> Option<()> {
         None
@@ -68,7 +66,7 @@ pub fn format_key_code(code: Code) -> String {
 pub fn format_hotkey_display(config: &HotkeyConfig) -> String {
     let mut parts = Vec::<String>::new();
     let key_str = format_key_code(config.key);
-    
+
     if config.modifiers.contains(Modifiers::META) {
         parts.push("Meta".to_string());
     }

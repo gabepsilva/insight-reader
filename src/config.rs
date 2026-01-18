@@ -82,7 +82,9 @@ struct RawConfig {
 }
 
 fn config_path() -> Option<PathBuf> {
-    let path = config_dir()?.join(APP_CONFIG_DIR_NAME).join(CONFIG_FILE_NAME);
+    let path = config_dir()?
+        .join(APP_CONFIG_DIR_NAME)
+        .join(CONFIG_FILE_NAME);
     Some(path)
 }
 
@@ -313,11 +315,10 @@ fn ocr_backend_to_str(backend: OCRBackend) -> &'static str {
 /// Load the persisted OCR backend, defaulting to `Default` if not set.
 pub fn load_ocr_backend() -> OCRBackend {
     match load_raw_config() {
-        Ok(cfg) => {
-            cfg.ocr_backend
-                .and_then(|s| ocr_backend_from_str(&s))
-                .unwrap_or(OCRBackend::Default)
-        }
+        Ok(cfg) => cfg
+            .ocr_backend
+            .and_then(|s| ocr_backend_from_str(&s))
+            .unwrap_or(OCRBackend::Default),
         Err(err) => {
             warn!(error = ?err, "Failed to load config, using default OCR backend");
             OCRBackend::Default
@@ -418,15 +419,17 @@ pub fn load_hotkey_config() -> (HotkeyConfig, bool) {
                     global_hotkey::hotkey::Modifiers::CONTROL
                 }
             };
-            let modifiers = cfg.hotkey_modifiers
+            let modifiers = cfg
+                .hotkey_modifiers
                 .as_deref()
                 .map(string_to_modifiers)
                 .unwrap_or(default_modifiers);
-            let key = cfg.hotkey_key
+            let key = cfg
+                .hotkey_key
                 .as_deref()
                 .and_then(string_to_code)
                 .unwrap_or(global_hotkey::hotkey::Code::KeyR);
-            
+
             (HotkeyConfig { modifiers, key }, enabled)
         }
         Err(err) => {
