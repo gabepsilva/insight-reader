@@ -2,7 +2,7 @@
 
 use global_hotkey::{
     hotkey::{Code, HotKey, Modifiers},
-    GlobalHotKeyEvent, GlobalHotKeyManager,
+    GlobalHotKeyEvent, GlobalHotKeyManager, HotKeyState,
 };
 use std::sync::mpsc;
 use tracing::{info, warn};
@@ -45,10 +45,14 @@ impl HotkeyManager {
         let (sender, receiver) = mpsc::channel();
 
         // Set up event handler for hotkey presses
+        // Only trigger on key PRESS, not release, to prevent duplicate events
         GlobalHotKeyEvent::set_event_handler(Some({
             let sender = sender.clone();
-            move |_event: GlobalHotKeyEvent| {
-                let _ = sender.send(());
+            move |event: GlobalHotKeyEvent| {
+                // Only send event on key press, ignore key release
+                if event.state == HotKeyState::Pressed {
+                    let _ = sender.send(());
+                }
             }
         }));
 

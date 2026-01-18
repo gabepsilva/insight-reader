@@ -290,11 +290,7 @@ fn test_logs_show_with_zero_lines() {
         let has_zero_line_count = stdout.contains("Showing last 0 line(s)");
         let log_content_lines: Vec<&str> = stdout
             .lines()
-            .filter(|l| {
-                !l.is_empty()
-                    && !l.contains("Log file:")
-                    && !l.contains("Showing last")
-            })
+            .filter(|l| !l.is_empty() && !l.contains("Log file:") && !l.contains("Showing last"))
             .collect();
         let has_no_content = log_content_lines.is_empty();
 

@@ -41,8 +41,8 @@ pub(crate) fn process_text(text: String, source: &str) -> Option<String> {
 }
 
 /// Gets the currently selected text.
+/// - On macOS: Simulates Cmd+C to copy selected text, then reads from clipboard (restores original clipboard after)
 /// - On Linux: Uses arboard to read from PRIMARY selection first, falls back to clipboard
-/// - On macOS: Uses arboard to read from clipboard
 /// - On Windows: Uses arboard to read from clipboard
 /// - On other platforms: Returns None
 pub fn get_selected_text() -> Option<String> {

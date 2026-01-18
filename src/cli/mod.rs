@@ -22,6 +22,8 @@ pub enum Commands {
         #[command(subcommand)]
         action: LogsAction,
     },
+    /// Show status of required system permissions (macOS only)
+    Permissions,
 }
 
 #[derive(Subcommand)]
@@ -77,9 +79,20 @@ pub fn run() {
             println!("No command specified. Use --help for available commands.");
             std::process::exit(0);
         }
-        Some(Commands::Config { action: ConfigAction::Show }) => show_config(),
-        Some(Commands::Logs { action: LogsAction::Show { lines } }) => show_logs(lines),
+        Some(Commands::Config {
+            action: ConfigAction::Show,
+        }) => show_config(),
+        Some(Commands::Logs {
+            action: LogsAction::Show { lines },
+        }) => show_logs(lines),
+        Some(Commands::Permissions) => show_permissions(),
     }
+}
+
+/// Exit with an error message
+fn exit_with_error(message: &str) -> ! {
+    eprintln!("{}", message);
+    std::process::exit(1);
 }
 
 fn show_config() {
@@ -102,10 +115,8 @@ fn show_config() {
     }
 
     // Check file size before reading
-    let metadata = fs::metadata(&config_path).unwrap_or_else(|e| {
-        eprintln!("Error reading config file metadata: {}", e);
-        std::process::exit(1);
-    });
+    let metadata = fs::metadata(&config_path)
+        .unwrap_or_else(|e| exit_with_error(&format!("Error reading config file metadata: {}", e)));
 
     if metadata.len() > MAX_CONFIG_SIZE {
         eprintln!(
@@ -116,10 +127,8 @@ fn show_config() {
         std::process::exit(1);
     }
 
-    let contents = fs::read_to_string(&config_path).unwrap_or_else(|e| {
-        eprintln!("Error reading config file: {}", e);
-        std::process::exit(1);
-    });
+    let contents = fs::read_to_string(&config_path)
+        .unwrap_or_else(|e| exit_with_error(&format!("Error reading config file: {}", e)));
 
     println!("Config file: {}", config_path.display());
     println!();
@@ -142,12 +151,11 @@ fn show_logs(lines: usize) {
     // Find the latest log file (daily rotation creates files like insight-reader.log, insight-reader.log.2026-01-06, etc.)
     let latest_log = fs::read_dir(&log_dir)
         .unwrap_or_else(|e| {
-            eprintln!(
+            exit_with_error(&format!(
                 "Error reading log directory {}: {}",
                 log_dir.display(),
                 e
-            );
-            std::process::exit(1);
+            ))
         })
         .filter_map(|entry| {
             let entry = entry.ok()?;
@@ -169,19 +177,14 @@ fn show_logs(lines: usize) {
     };
 
     // Read the file and get the last N lines
-    let file = fs::File::open(&latest_log).unwrap_or_else(|e| {
-        eprintln!("Error opening log file: {}", e);
-        std::process::exit(1);
-    });
+    let file = fs::File::open(&latest_log)
+        .unwrap_or_else(|e| exit_with_error(&format!("Error opening log file: {}", e)));
 
     let reader = BufReader::new(file);
     let all_lines: Vec<String> = reader
         .lines()
         .collect::<Result<_, _>>()
-        .unwrap_or_else(|e| {
-            eprintln!("Error reading log file: {}", e);
-            std::process::exit(1);
-        });
+        .unwrap_or_else(|e| exit_with_error(&format!("Error reading log file: {}", e)));
 
     let start = all_lines.len().saturating_sub(lines);
     let lines_to_show = &all_lines[start..];
@@ -191,8 +194,83 @@ fn show_logs(lines: usize) {
         println!("{}", line);
     }
 
-    // Print header information last
-    println!();
+    // Print summary at the end
     println!("Log file: {}", latest_log.display());
-    println!("Showing last {} line(s):", lines_to_show.len());
+    println!("Showing last {} line(s)", lines_to_show.len());
+}
+
+fn show_permissions() {
+    #[cfg(target_os = "macos")]
+    {
+        show_permissions_macos();
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        println!("Permission checking is only available on macOS.");
+        println!();
+        println!("On Linux and Windows, permissions are typically handled differently:");
+        println!("  - Linux: No special permissions needed for clipboard or screenshots");
+        println!("  - Windows: No special permissions needed for clipboard or screenshots");
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn show_permissions_macos() {
+    use macos_accessibility_client::accessibility::application_is_trusted;
+
+    println!("Insight Reader - Permission Status (macOS)");
+    println!("==========================================");
+    println!();
+
+    // Check Accessibility permission
+    let accessibility_granted = application_is_trusted();
+    let accessibility_status = if accessibility_granted {
+        "✓ Granted"
+    } else {
+        "✗ Not Granted"
+    };
+    println!("Accessibility:    {}", accessibility_status);
+    println!("  Required for:   Capturing selected text (simulates Cmd+C)");
+    println!("  Settings path:  System Settings > Privacy & Security > Accessibility");
+    println!();
+
+    // Check Screen Recording permission
+    let screen_recording_granted = check_screen_recording_permission();
+    let screen_recording_status = if screen_recording_granted {
+        "✓ Granted"
+    } else {
+        "✗ Not Granted"
+    };
+    println!("Screen Recording: {}", screen_recording_status);
+    println!("  Required for:   Screenshot OCR feature");
+    println!("  Settings path:  System Settings > Privacy & Security > Screen Recording");
+    println!();
+
+    // Summary
+    let all_granted = accessibility_granted && screen_recording_granted;
+    if all_granted {
+        println!("All required permissions are granted.");
+    } else {
+        println!("Some permissions are missing. The app may not function correctly.");
+        println!();
+        println!("To grant permissions:");
+        println!("  1. Open System Settings");
+        println!("  2. Go to Privacy & Security");
+        println!("  3. Enable Insight Reader for each required permission");
+    }
+}
+
+/// Check Screen Recording permission using CoreGraphics API
+#[cfg(target_os = "macos")]
+fn check_screen_recording_permission() -> bool {
+    // CGPreflightScreenCaptureAccess() returns true if the app has screen recording permission
+    // This function does NOT prompt the user - it just checks the current status
+    #[link(name = "CoreGraphics", kind = "framework")]
+    extern "C" {
+        fn CGPreflightScreenCaptureAccess() -> bool;
+    }
+
+    // Safety: CGPreflightScreenCaptureAccess is a safe C function with no side effects
+    unsafe { CGPreflightScreenCaptureAccess() }
 }

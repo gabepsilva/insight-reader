@@ -14,7 +14,10 @@ fn clipboard_lock() -> std::sync::MutexGuard<'static, ()> {
 }
 
 // Helper to wait for clipboard operations to complete
+// Only needed for non-macOS tests (macOS uses Cmd+C simulation, not direct clipboard read)
+#[cfg(not(target_os = "macos"))]
 const CLIPBOARD_DELAY_MS: u64 = 100;
+#[cfg(not(target_os = "macos"))]
 fn wait_for_clipboard() {
     std::thread::sleep(std::time::Duration::from_millis(CLIPBOARD_DELAY_MS));
 }
@@ -154,9 +157,13 @@ fn test_copy_to_clipboard_newlines() {
 
 // ============================================================================
 // Integration Tests for get_selected_text()
+// NOTE: On macOS, get_selected_text() uses Cmd+C simulation which requires
+// actual text selection. These tests only work on Linux/Windows where
+// clipboard reading is direct.
 // ============================================================================
 
 #[test]
+#[cfg(not(target_os = "macos"))]
 fn test_get_selected_text_after_copy() {
     let _guard = clipboard_lock();
     // Clear clipboard first to ensure we're testing our own copy operation
@@ -177,6 +184,7 @@ fn test_get_selected_text_after_copy() {
 }
 
 #[test]
+#[cfg(not(target_os = "macos"))]
 fn test_get_selected_text_unicode() {
     let _guard = clipboard_lock();
     let original_text = "Hello 👋 World 🌍";
@@ -193,6 +201,7 @@ fn test_get_selected_text_unicode() {
 }
 
 #[test]
+#[cfg(not(target_os = "macos"))]
 fn test_get_selected_text_with_newlines() {
     let _guard = clipboard_lock();
     let original_text = "Line 1\nLine 2\nLine 3";
@@ -210,9 +219,12 @@ fn test_get_selected_text_with_newlines() {
 
 // ============================================================================
 // Round-trip Integration Tests
+// NOTE: On macOS, get_selected_text() uses Cmd+C simulation which requires
+// actual text selection. These tests only work on Linux/Windows.
 // ============================================================================
 
 #[test]
+#[cfg(not(target_os = "macos"))]
 fn test_round_trip_ascii() {
     let _guard = clipboard_lock();
     let original_text = "Simple ASCII text for round-trip test";
@@ -225,6 +237,7 @@ fn test_round_trip_ascii() {
 }
 
 #[test]
+#[cfg(not(target_os = "macos"))]
 fn test_round_trip_unicode() {
     let _guard = clipboard_lock();
     let original_text = "Hello 👋 World 🌍 Привет мир 你好";
@@ -240,6 +253,7 @@ fn test_round_trip_unicode() {
 }
 
 #[test]
+#[cfg(not(target_os = "macos"))]
 fn test_round_trip_special_characters() {
     let _guard = clipboard_lock();
     let original_text = "Text with \"quotes\", 'apostrophes',\nnewlines,\tand\ttabs";
@@ -255,6 +269,7 @@ fn test_round_trip_special_characters() {
 }
 
 #[test]
+#[cfg(not(target_os = "macos"))]
 fn test_round_trip_long_text() {
     let _guard = clipboard_lock();
     let original_text = "a".repeat(2000);
@@ -267,6 +282,7 @@ fn test_round_trip_long_text() {
 }
 
 #[test]
+#[cfg(not(target_os = "macos"))]
 fn test_round_trip_multiline() {
     let _guard = clipboard_lock();
     let original_text = "Line 1\nLine 2\nLine 3\nLine 4";
@@ -282,6 +298,7 @@ fn test_round_trip_multiline() {
 }
 
 #[test]
+#[cfg(not(target_os = "macos"))]
 fn test_round_trip_empty_string() {
     let _guard = clipboard_lock();
     let original_text = "";
@@ -329,6 +346,7 @@ fn test_copy_to_clipboard_error_message_format() {
 }
 
 #[test]
+#[cfg(not(target_os = "macos"))]
 fn test_get_selected_text_empty_clipboard() {
     let _guard = clipboard_lock();
     // Clear clipboard by copying empty string
@@ -348,6 +366,7 @@ fn test_get_selected_text_empty_clipboard() {
 }
 
 #[test]
+#[cfg(not(target_os = "macos"))]
 fn test_sequential_operations() {
     let _guard = clipboard_lock();
     // Test that multiple clipboard operations work correctly in sequence
